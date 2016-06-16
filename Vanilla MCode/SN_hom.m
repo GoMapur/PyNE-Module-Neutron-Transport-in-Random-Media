@@ -6,7 +6,6 @@
 %MAIN OUTPUTS: transmission "TR"; reflection "RL"
 %              scalar flux "SCAL"
 
-%RICHARD VASQUES & NITIN KUMAR YADAV
 
 clear all
 clc

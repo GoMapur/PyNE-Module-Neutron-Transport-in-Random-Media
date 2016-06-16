@@ -6,8 +6,6 @@
 # %MAIN OUTPUTS: transmission 'TR'; reflection 'RL'
 # %			  scalar flux 'SCAL'
 
-# %RICHARD VASQUES & NITIN KUMAR YADAV
-
 import numpy as np
 import matplotlib.pyplot as plt
 import os, sys
@@ -793,7 +791,7 @@ def non_homogenous(var):
 		h[n1-1] = x[j-1, 1-1]/2
 		L[n1+1-1,1-1] = h[n1-1]
 		L[n1+1-1,2-1] = x[j-1, 2-1]
-		h[n1+1-1]=h[n1-1]
+		h[n1+1-1] = h[n1-1]
 		L[n1+2-1,1-1] = x[j-1, 1-1]
 		L[n1+2-1,2-1] = 3
 		n1 += 2

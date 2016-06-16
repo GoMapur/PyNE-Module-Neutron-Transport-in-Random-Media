@@ -1,7 +1,5 @@
 %THIS IS THE AUXILIARY FUNCTION OF THE MAIN CODE "periodic_benchmark"
 
-%RICHARD VASQUES & NITIN KUMAR YADAV
-
 
 function[Z,extra,n1,B] = SN_per_bench_solver(T,m1,m2,n,N,Es1,Es2,Et1,Et2,yo,y_,Q1,Q2,u,wt,a)
 
