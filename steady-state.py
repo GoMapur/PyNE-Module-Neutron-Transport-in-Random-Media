@@ -720,7 +720,6 @@ def non_homogenous(var):
 	if not med:
 		random.seed(randseed)
 		m12 = [0, m1, m2] #refers to which material, pad with 0 so index 1 == material 1 (slightly less confusing this way)
-		xx == 0.0
 		xx = random.random() #python random gives a float in [0.0, 1.0) 
 		#turns out both Matlab and python use deterministic randomgenerators
 		if xx <= m1/(m1+m2):
@@ -750,7 +749,7 @@ def non_homogenous(var):
 	else:
 		interval = T/n
 		m12 = [0, m1, m2]
-		mm = 9
+		mm = 0
 		i = 0
 		s = 0
 		if a > 1:
@@ -768,7 +767,7 @@ def non_homogenous(var):
 		while s < T:
 			i += 1
 			x1 = m12[mm%2 + 1]
-			s += 1
+			s = s+x1
 			tmp = []
 			if s <= T:
 				tmp.append(s)
