@@ -1,3 +1,5 @@
+import numpy as np
+
 def non_homogenous(var):
     rod_slab = var[0]
     N = var[1]
@@ -129,7 +131,7 @@ def non_homogenous(var):
             L[n1, 0] = (x[j-1, 0] + x[j-2, 0]) / 2
             L[n1, 1] = x[j-2, 1]
             h[n1-1] = L[n1, 0] - L[n1-1, 0]
-            n1 = n1 + 1`
+            n1 = n1 + 1
             L[n1, 0] = x[j-1, 0]
             L[n1, 1] = 3
             h[n1-1] = L[n1, 0] - L[n1-1, 0]
@@ -188,13 +190,13 @@ def non_homogenous(var):
     Q12 = [Q1, Q2]
     minleft = T / 2 - m1 / 2
     maxright = T / 2 + m1 / 2
-    for t in arange(1, N / 2).reshape(-1):
+    for t in range(1, N/2+1):
         s = (t-1) * n1
         A[s, s] = - u[t-1] * (1/h[0] + 1/(h[0]+h[1])) + Et12[L[0, 1]-1] - Es12[L[0,1]-1] * wt[t-1] / 2
         A[s, s+1] = u[t-1] * (1/h[0] + 1/h[1])
         A[s, s+2] = -u[t-1] * h[0] / (h[1] * (h[0]+h[1]))
         B[s] = 0.0
-        for i in arange(2, n1-1).reshape(-1):
+        for i in range(2, n1):
             if L[i-1, 1] == 3:
                 if i == n1-1:
                     A[s+i-1, s+i-1] = -u[t-1] * (1/h[i-1] + 1/(h[i-1] + h[i])) + Et12[L[i, 1]-1] - Es12[L[i, 1]-1] * wt[t-1] / 2
@@ -224,45 +226,45 @@ def non_homogenous(var):
         B[s+n1-1] = -u[t-1] * y_ * h[n1-0] / (h[n1-1] * (h[n1] + h[n1-1]))
         l = copy(t)
         if l == 1 and N > 2:
-            for p in arange(l+1, N/2).reshape(-1):
+            for p in range(l+1, N/2+1):
                 S = (p-1) * n1
-                for i in arange(1, n1).reshape(-1):
+                for i in range(1, n1+1):
                     if L[i-1, 1] == 3:
                         A[s+i-1, S+i-1] = -Es12[L[i, 1]-1] * wt[p-1] / 2
                     else:
                         A[s+i-1, S+i-1] = -Es12[L[i - 1, 1]-1] * wt[p-1] / 2
         else:
             if l > 1 and N > 2:
-                for p in arange(1, l-1).reshape(-1):
+                for p in range(1, l):
                     S = (p-1) * n1
-                    for i in arange(1, n1).reshape(-1):
+                    for i in range(1, n1+1):
                         if L[i-1, 1] == 3:
                             A[s+i-1, S+i-1] = -Es12[L[i, 1]-1] * wt[p-1] / 2
                         else:
                             A[s+i-1, S+i-1] = -Es12[L[i-1, 1]-1] * wt[p-1] / 2
-                for p in arange(l+1, N/2).reshape(-1):
+                for p in range(l+1, N/2+1):
                     S = (p-1) * n1
-                    for i in arange(1, n1).reshape(-1):
+                    for i in range(1, n1+1):
                         if L[i-1, 1] == 3:
                             A[s+i-1, S+i-1] = -Es12[L[i, 1]-1] * wt[p-1] / 2
                         else:
                             A[s+i-1, S+i-1] = -Es12[L[i-1, 1]-1] * wt[p-1] / 2
         a = 0
-        for p in arange(1, N/2).reshape(-1):
+        for p in range(1, N/2+1):
             S = (N/2 + p - 1) * n1
-            for i in arange(2, n1).reshape(-1):
+            for i in range(2, n1+1):
                 if L[i-1, 1] == 3:
                     A[s+i-1, S+i] = -Es12[L[i, 1]-1] * wt[N/2 + p - 1] / 2
                 else:
                     A[s+i-1, S+i] = -Es12[L[i-1, 1]-1] * wt[N/2 + p - 1] / 2
             a = a + (Es12[L[0, 1]-1] * wt[N/2 + p - 1] * yo / 2)
         B[s] = B[s] + a
-    for t in arange(N/2 + 1, N).reshape(-1):
+    for t in range(N/2 + 1, N+1):
         s = (t-1) * n1
         A[s, s] = u[t-1] * (h[1] - h[0]) / (h[1] * h[0]) + Et12[L[0, 1]-1] - Es12[L[0, 1]-1] * wt[t-1] / 2
         A[s, s+1] = u[t-1] * h[0] / (h[1] * (h[0] + h[1]))
         B[s] = u[t-1] * yo * h[1] / (h[0] * (h[0] + h[1]))
-        for i in arange(2, n1-1).reshape(-1):
+        for i in range(2, n1):
             if L[i, 1] == 3:
                 if i == 2:
                     A[s+i-1, s+i-1] = u[t-1] * (1/h[i-1] + 1 / (h[i-1] + h[i])) + Et12[L[i-1, 1]-1] - Es12[L[i-1, 1]-1] * wt[t-1] / 2
@@ -293,33 +295,33 @@ def non_homogenous(var):
         B[s+n1-1] = 0.0
         l = copy(t)
         if l == N/2 + 1 and N > 2:
-            for p in arange(l + 1, N).reshape(-1):
+            for p in range(l + 1, N+1):
                 S = (p-1) * n1
-                for i in arange(1, n1).reshape(-1):
+                for i in range(1, n1+1):
                     if L[i, 1] == 3:
                         A[s+i-1, S+i-1] = -Es12[L[i-1, 1]-1] * wt[p-1] / 2
                     else:
                         A[s+i-1, S+i-1] = -Es12[L[i, 1]-1] * wt[p-1] / 2
         else:
             if l > N/2 + 1 and N > 2:
-                for p in arange(N/2 + 1, l-1).reshape(-1):
+                for p in range(N/2 + 1, l):
                     S = (p-1) * n1
-                    for i in arange(1, n1).reshape(-1):
+                    for i in range(1, n1+1):
                         if L[i, 1] == 3:
                             A[s+i-1, S+i-1] = -Es12[L[i-1, 1]-1] * wt[p-1] / 2
                         else:
                             A[s+i-1, S+i-1] = -Es12[L[i, 1]-1] * wt[p-1] / 2
-                for p in arange(l + 1, N).reshape(-1):
+                for p in range(l+1, N+1):
                     S = (p-1) * n1
-                    for i in arange(1, n1).reshape(-1):
+                    for i in range(1, n1+1):
                         if L[i, 1] == 3:
                             A[s+i-1, S+i-1] = -Es12[L[i-1, 1]-1] * wt[p-1] / 2
                         else:
                             A[s+i-1, S+i-1] = -Es12[L[i, 1]-1] * wt[p-1] / 2
         a = 0
-        for p in arange(1, N/2).reshape(-1):
+        for p in range(1, N/2+1):
             S = (p-1) * n1
-            for i in arange(1, n1-1).reshape(-1):
+            for i in range(1, n1):
                 if L[i, 1] == 3:
                     A[s+i-1, S+i] = -Es12[L[i-1, 1]-1] * wt[p-1] / 2
                 else:
