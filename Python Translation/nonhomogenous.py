@@ -64,7 +64,7 @@ def non_homogenous(var):
         i = 0
         s = 0
         if a > 1:
-            if a < m1 / interval + 2:  # check order of op here
+            if a < m1/interval + 2:  # check order of op here
                 i += 1
                 x1 = (a-1) * interval
                 s += x1
@@ -129,7 +129,7 @@ def non_homogenous(var):
             L[n1, 0] = (x[j-1, 0] + x[j-2, 0]) / 2
             L[n1, 1] = x[j-2, 1]
             h[n1-1] = L[n1, 0] - L[n1-1, 0]
-            n1 = n1 + 1
+            n1 = n1 + 1`
             L[n1, 0] = x[j-1, 0]
             L[n1, 1] = 3
             h[n1-1] = L[n1, 0] - L[n1-1, 0]
@@ -140,43 +140,43 @@ def non_homogenous(var):
         while i <= n:
             if t1 > x[j-1, 0]:
                 extra[i-1] = extra[i-1] + 2
-                L[n1, 0] = (x[j - 1, 0] + x[j - 2, 0]) / 2
+                L[n1, 0] = (x[j-1, 0] + x[j-2, 0]) / 2
                 L[n1, 1] = x[j - 1, 1]
-                h[n1 - 1] = L[n1, 0] - L[n1 - 1, 0]
+                h[n1-1] = L[n1, 0] - L[n1-1, 0]
                 n1 = n1 + 1
-                L[n1, 0] = x[j - 1, 0]
+                L[n1, 0] = x[j-1, 0]
                 L[n1, 1] = 3
-                h[n1 - 1] = L[n1, 0] - L[n1 - 1, 0]
+                h[n1-1] = L[n1, 0] - L[n1-1, 0]
                 n1 = n1 + 1
             else:
-                while t1 <= x[j - 1, 0]:
+                while t1 <= x[j-1, 0]:
 
                     L[n1, 0] = i * H
-                    if L[n1, 0] == x[j - 1, 0]:
+                    if L[n1, 0] == x[j-1, 0]:
                         L[n1, 1] = 3
                     else:
-                        L[n1, 1] = x[j - 1, 1]
-                    h[n1 - 1] = L[n1, 0] - L[n1 - 1, 0]
+                        L[n1, 1] = x[j-1, 1]
+                    h[n1-1] = L[n1, 0] - L[n1-1, 0]
                     n1 = n1 + 1
                     i = i + 1
                     t1 = i * H
 
-                if x[j - 1, 0] < T and L[n1 - 1] != x[j - 1, 0]:
-                    extra[i - 1] = extra[i - 1] + 1
-                    L[n1, 0] = x[j - 1, 0]
+                if x[j-1, 0] < T and L[n1-1] != x[j-1, 0]:
+                    extra[i-1] = extra[i-1] + 1
+                    L[n1, 0] = x[j-1, 0]
                     L[n1, 1] = 3
-                    h[n1] = L[n1, 0] - L[n1 - 1, 0]
+                    h[n1] = L[n1, 0] - L[n1-1, 0]
                     n1 = n1 + 1
             j = j + 1
-            if t1 == T and (x[j - 1, 0] - x[j - 2, 0]) < H:
-                extra[i - 1] = extra[i - 1] + 1
-                L[n1, 0] = (x[j - 1, 0] + x[j - 2, 0]) / 2
-                L[n1, 1] = x[j - 2, 1]
-                h[n1 - 1] = L[n1, 0] - L[n1 - 1, 0]
+            if t1 == T and (x[j-1, 0] - x[j-2, 0]) < H:
+                extra[i-1] = extra[i-1] + 1
+                L[n1, 0] = (x[j-1, 0] + x[j-2, 0]) / 2
+                L[n1, 1] = x[j-2, 1]
+                h[n1-1] = L[n1, 0] - L[n1-1, 0]
                 n1 = n1 + 1
-                L[n1, 0] = x[j - 1, 0]
+                L[n1, 0] = x[j-1, 0]
                 L[n1, 1] = 3
-                h[n1] = L[n1, 0] - L[n1 - 1, 0]
+                h[n1] = L[n1, 0] - L[n1-1, 0]
                 n1 = n1 + 1
                 i = i + 1
 
@@ -189,149 +189,142 @@ def non_homogenous(var):
     minleft = T / 2 - m1 / 2
     maxright = T / 2 + m1 / 2
     for t in arange(1, N / 2).reshape(-1):
-        s = (t - 1) * n1
-        A[s, s] = - u[t - 1] * (1 / h[0] + 1 / (h[0] + h[1])) + Et12[L[0, 1] - 1] - Es12[L[0, 1] - 1] * wt[t - 1] / 2
-        A[s, s + 1] = u[t - 1] * (1 / h[0] + 1 / h[1])
-        A[s, s + 2] = - u[t - 1] * (h[0] / (h[1] * (h[0] + h[1])))
+        s = (t-1) * n1
+        A[s, s] = - u[t-1] * (1/h[0] + 1/(h[0]+h[1])) + Et12[L[0, 1]-1] - Es12[L[0,1]-1] * wt[t-1] / 2
+        A[s, s+1] = u[t-1] * (1/h[0] + 1/h[1])
+        A[s, s+2] = -u[t-1] * h[0] / (h[1] * (h[0]+h[1]))
         B[s] = 0.0
-        for i in arange(2, n1 - 1).reshape(-1):
-            if L[i - 1, 1] == 3:
-                if i == n1 - 1:
+        for i in arange(2, n1-1).reshape(-1):
+            if L[i-1, 1] == 3:
+                if i == n1-1:
                     A[s+i-1, s+i-1] = -u[t-1] * (1/h[i-1] + 1/(h[i-1] + h[i])) + Et12[L[i, 1]-1] - Es12[L[i, 1]-1] * wt[t-1] / 2
                     A[s+i-1, s+i] = u[t-1] * (1/h[i-1] + 1/h[i])
                     if L[i, 0] >= minleft and L[i, 0] <= maxright:
                         B[s+i-1] = u[t-1] * y_ * (h[i-1] / (h[i] * (h[i-1] + h[i]))) + Q12[L[i, 1]-1] / 2
                     else:
-                        B[s + i - 1] = u[t - 1] * y_ * (h[i - 1] / (h[i] * (h[i - 1] + h[i])))
+                        B[s+i-1] = u[t-1] * y_ * (h[i-1] / (h[i] * (h[i-1] + h[i])))
                 else:
-                    A[s + i - 1, s + i - 1] = - u[t - 1] * (1 / h[i - 1] + 1 / (h[i - 1] + h[i])) + Et12[
-                        L[i, 1] - 1] - Es12[L[i, 1] - 1] * wt[t - 1] / 2
-                    A[s + i - 1, s + i] = u[t - 1] * (1 / h[i - 1] + 1 / h[i])
-                    A[s + i - 1, s + i + 1] = - u[t - 1] * (h[i - 1] / (h[i] * (h[i - 1] + h[i])))
+                    A[s+i-1, s+i-1] = -u[t-1] * (1/h[i-1] + 1/(h[i-1] + h[i])) + Et12[L[i, 1]-1] - Es12[L[i, 1]-1] * wt[t-1] / 2
+                    A[s+i-1, s+i] = u[t-1] * (1/h[i-1] + 1/h[i])
+                    A[s+i-1, s+i+1] = -u[t-1] * h[i-1] / (h[i] * (h[i-1] + h[i]))
                     if L[i, 0] >= minleft and L[i, 0] <= maxright:
-                        B[s + i - 1] = Q12[L[i, 1] - 1] / 2
+                        B[s+i-1] = Q12[L[i, 1]-1] / 2
                     else:
-                        B[s + i - 1] = 0.0
+                        B[s+i-1] = 0.0
             else:
-                A[s + i - 1, s + i - 0] = - u[t - 1] * h[i - 1] / (h[i - 0] * (h[i - 0] + h[i - 1]))
-                A[s + i - 1, s + i - 1] = u[t - 1] * (h[i - 1] - h[i - 0]) / (
-                    h[i - 1] * h[i - 0]) + Et12[L[i - 1, 1] - 1] - Es12[L[i - 1, 1] - 1] * wt[t - 1] / 2
-                A[s + i - 1, s + i] = u[t - 1] * h[i - 0] / (h[i - 1] * (h[i - 0] + h[i - 1]))
-                if L[i - 1, 0] >= minleft and L[i - 1, 0] <= maxright:
-                    B[s + i - 1] = Q12[L[i - 1, 1] - 1] / 2
+                A[s+i-1, s+i] = -u[t-1] * h[i-1] / (h[i-0] * (h[i-0] + h[i-1]))
+                A[s+i-1, s+i-1] = u[t-1] * (h[i-1] - h[i-0]) / (h[i - 1] * h[i - 0]) + Et12[L[i-1, 1]-1] - Es12[L[i-1, 1]-1] * wt[t-1] / 2
+                A[s+i-1, s+i] = u[t-1] * h[i] / (h[i-1] * (h[i] + h[i-1]))
+                if L[i-1, 0] >= minleft and L[i-1, 0] <= maxright:
+                    B[s+i-1] = Q12[L[i-1, 1]-1] / 2
                 else:
-                    B[s + i - 1] = 0.0
-        A[s + n1 - 1, s + n1 - 0] = - u[t - 1] * h[n1 - 1] / (h[n1 - 0] * (h[n1 - 0] + h[n1 - 1]))
-        A[s + n1 - 1, s + n1 - 1] = u[t - 1] * (h[n1 - 1] - h[n1 - 0]) / (h[n1 - 1] * h[
-            n1 - 0]) + Et12[L[n1 - 1, 1] - 1] - Es12[L[n1 - 1, 1] - 1] * wt[t - 1] / 2
-        B[s + n1 - 1] = - u[t - 1] * y_ * h[n1 - 0] / (h[n1 - 1] * (h[n1 - 0] + h[n1 - 1]))
+                    B[s+i-1] = 0.0
+        A[s+n1-1, s+n1] = -u[t-1] * h[n1-1] / (h[n1] * (h[n1] + h[n1-1]))
+        A[s+n1-1, s+n1-1] = u[t-1] * (h[n1-1] - h[n1]) / (h[n1-1] * h[n1]) + Et12[L[n1-1, 1]-1] - Es12[L[n1-1, 1]-1] * wt[t-1] / 2
+        B[s+n1-1] = -u[t-1] * y_ * h[n1-0] / (h[n1-1] * (h[n1] + h[n1-1]))
         l = copy(t)
         if l == 1 and N > 2:
-            for p in arange(l + 1, N / 2).reshape(-1):
-                S = (p - 1) * n1
+            for p in arange(l+1, N/2).reshape(-1):
+                S = (p-1) * n1
                 for i in arange(1, n1).reshape(-1):
-                    if L[i - 1, 1] == 3:
-                        A[s + i - 1, S + i - 1] = -Es12[L[i, 1] - 1] * wt[p - 1] / 2
+                    if L[i-1, 1] == 3:
+                        A[s+i-1, S+i-1] = -Es12[L[i, 1]-1] * wt[p-1] / 2
                     else:
-                        A[s + i - 1, S + i - 1] = -Es12[L[i - 1, 1] - 1] * wt[p - 1] / 2
+                        A[s+i-1, S+i-1] = -Es12[L[i - 1, 1]-1] * wt[p-1] / 2
         else:
             if l > 1 and N > 2:
-                for p in arange(1, l - 1).reshape(-1):
-                    S = (p - 1) * n1
+                for p in arange(1, l-1).reshape(-1):
+                    S = (p-1) * n1
                     for i in arange(1, n1).reshape(-1):
-                        if L[i - 1, 1] == 3:
-                            A[s + i - 1, S + i - 1] = -Es12[L[i, 1] - 1] * wt[p - 1] / 2
+                        if L[i-1, 1] == 3:
+                            A[s+i-1, S+i-1] = -Es12[L[i, 1]-1] * wt[p-1] / 2
                         else:
-                            A[s + i - 1, S + i - 1] = -Es12[L[i - 1, 1] - 1] * wt[p - 1] / 2
-                for p in arange(l + 1, N / 2).reshape(-1):
-                    S = (p - 1) * n1
+                            A[s+i-1, S+i-1] = -Es12[L[i-1, 1]-1] * wt[p-1] / 2
+                for p in arange(l+1, N/2).reshape(-1):
+                    S = (p-1) * n1
                     for i in arange(1, n1).reshape(-1):
-                        if L[i - 1, 1] == 3:
-                            A[s + i - 1, S + i - 1] = -Es12[L[i, 1] - 1] * wt[p - 1] / 2
+                        if L[i-1, 1] == 3:
+                            A[s+i-1, S+i-1] = -Es12[L[i, 1]-1] * wt[p-1] / 2
                         else:
-                            A[s + i - 1, S + i - 1] = -Es12[L[i - 1, 1] - 1] * wt[p - 1] / 2
+                            A[s+i-1, S+i-1] = -Es12[L[i-1, 1]-1] * wt[p-1] / 2
         a = 0
-        for p in arange(1, N / 2).reshape(-1):
-            S = (N / 2 + p - 1) * n1
+        for p in arange(1, N/2).reshape(-1):
+            S = (N/2 + p - 1) * n1
             for i in arange(2, n1).reshape(-1):
-                if L[i - 1, 1] == 3:
-                    A[s + i - 1, S + i - 0] = -Es12[L[i, 1] - 1] * wt[N / 2 + p - 1] / 2
+                if L[i-1, 1] == 3:
+                    A[s+i-1, S+i] = -Es12[L[i, 1]-1] * wt[N/2 + p - 1] / 2
                 else:
-                    A[s + i - 1, S + i - 0] = -Es12[L[i - 1, 1] - 1] * wt[N / 2 + p - 1] / 2
-            a = a + (Es12[L[0, 1] - 1] * wt[N / 2 + p - 1] * yo / 2)
+                    A[s+i-1, S+i] = -Es12[L[i-1, 1]-1] * wt[N/2 + p - 1] / 2
+            a = a + (Es12[L[0, 1]-1] * wt[N/2 + p - 1] * yo / 2)
         B[s] = B[s] + a
-    for t in arange(N / 2 + 1, N).reshape(-1):
-        s = (t - 1) * n1
-        A[s, s] = u[t - 1] * (h[1] - h[0]) / (h[1] * h[0]) + Et12[L[0, 1] - 1] - Es12[L[0, 1] - 1] * wt[t - 1] / 2
-        A[s, s + 1] = u[t - 1] * h[0] / (h[1] * (h[0] + h[1]))
-        B[s] = u[t - 1] * yo * h[1] / (h[0] * (h[0] + h[1]))
-        for i in arange(2, n1 - 1).reshape(-1):
+    for t in arange(N/2 + 1, N).reshape(-1):
+        s = (t-1) * n1
+        A[s, s] = u[t-1] * (h[1] - h[0]) / (h[1] * h[0]) + Et12[L[0, 1]-1] - Es12[L[0, 1]-1] * wt[t-1] / 2
+        A[s, s+1] = u[t-1] * h[0] / (h[1] * (h[0] + h[1]))
+        B[s] = u[t-1] * yo * h[1] / (h[0] * (h[0] + h[1]))
+        for i in arange(2, n1-1).reshape(-1):
             if L[i, 1] == 3:
                 if i == 2:
-                    A[s + i - 1, s + i - 1] = u[t - 1] * (1 / h[i - 1] + 1 / (h[i - 1] + h[i - 0])) + Et12[
-                        L[i - 1, 1] - 1] - Es12[L[i - 1, 1] - 1] * wt[t - 1] / 2
-                    A[s + i - 1, s + i - 0] = - u[t - 1] * (1 / h[i - 1] + 1 / h[i - 0])
-                    if L[i - 1, 0] >= minleft and L[i - 1, 0] <= maxright:
-                        B[s + i - 1] = - u[t - 1] * yo * (h[i - 1] / (h[i - 0] * (h[i - 1] + h[i - 0]))) + Q12[L[i - 1, 1] - 1] / 2
+                    A[s+i-1, s+i-1] = u[t-1] * (1/h[i-1] + 1 / (h[i-1] + h[i])) + Et12[L[i-1, 1]-1] - Es12[L[i-1, 1]-1] * wt[t-1] / 2
+                    A[s+i-1, s+i] = -u[t-1] * (1/h[i-1] + 1/h[i])
+                    if L[i-1, 0] >= minleft and L[i-1, 0] <= maxright:
+                        B[s+i-1] = -u[t-1] * yo * (h[i-1] / (h[i] * (h[i-1] + h[i]))) + Q12[L[i-1, 1]-1] / 2
                     else:
-                        B[s + i - 1] = - u[t - 1] * yo * (h[i - 1] / (h[i - 0] * (h[i - 1] + h[i - 0])))
+                        B[s+i-1] = -u[t-1] * yo * (h[i-1] / (h[i] * (h[i-1] + h[i])))
                 else:
-                    A[s + i - 1, s + i - 1] = u[t - 1] * (1 / h[i - 1] + 1 / (h[i - 1] + h[i - 0])) + Et12[
-                        L[i - 1, 1] - 1] - Es12[L[i - 1, 1] - 1] * wt[t - 1] / 2
-                    A[s + i - 1, s + i - 0] = - u[t - 1] * (1 / h[i - 1] + 1 / h[i - 0])
-                    A[s + i - 1, s + i - 3] = u[t - 1] * (h[i - 1] / (h[i - 0] * (h[i - 1] + h[i - 0])))
-                    if L[i - 1, 0] >= minleft and L[i - 1, 0] <= maxright:
-                        B[s + i - 1] = Q12[L[i - 1, 1] - 1] / 2
+                    A[s+i-1, s+i-1] = u[t-1] * (1/h[i-1] + 1 / (h[i-1] + h[i])) + Et12[L[i-1, 1]-1] - Es12[L[i-1, 1]-1] * wt[t-1] / 2
+                    A[s+i-1, s+i] = -u[t-1] * (1/h[i-1] + 1/h[i])
+                    A[s+i-1, s+i-3] = u[t-1] * (h[i-1] / (h[i] * (h[i-1] + h[i])))
+                    if L[i-1, 0] >= minleft and L[i-1, 0] <= maxright:
+                        B[s+i-1] = Q12[L[i-1, 1]-1] / 2
                     else:
-                        B[s + i - 1] = 0.0
+                        B[s+i-1] = 0.0
             else:
-                A[s + i - 1, s + i - 0] = - u[t - 1] * h[i] / (h[i - 1] * (h[i - 1] + h[i]))
-                A[s + i - 1, s + i - 1] = u[t - 1] * (h[i] - h[i - 1]) / (h[i] * h[i - 1]) + Et12[
-                    L[i, 1] - 1] - Es12[L[i, 1] - 1] * wt[t - 1] / 2
-                A[s + i - 1, s + i] = u[t - 1] * h[i - 1] / (h[i] * (h[i - 1] + h[i]))
+                A[s+i-1, s+i] = -u[t-1] * h[i] / (h[i-1] * (h[i-1] + h[i]))
+                A[s+i-1, s+i-1] = u[t-1] * (h[i] - h[i-1]) / (h[i] * h[i-1]) + Et12[L[i, 1]-1] - Es12[L[i, 1]-1] * wt[t-1] / 2
+                A[s+i-1, s+i] = u[t-1] * h[i-1] / (h[i] * (h[i-1] + h[i]))
                 if L[i, 0] >= minleft and L[i, 0] <= maxright:
-                    B[s + i - 1] = Q12[L[i, 1] - 1] / 2
+                    B[s+i-1] = Q12[L[i, 1]-1] / 2
                 else:
-                    B[s + i - 1] = 0.0
-        A[s + n1 - 1, s + n1 - 1] = u[t - 1] * (1 / h[n1 - 1] + 1 / (h[n1 - 1] + h[n1 - 0])) + Et12[
-            L[n1 - 1, 1] - 1] - Es12[L[n1 - 1, 1] - 1] * wt[t - 1] / 2
-        A[s + n1 - 1, s + n1 - 0] = - u[t - 1] * (1 / h[n1 - 1] + 1 / h[n1 - 0])
-        A[s + n1 - 1, s + n1 - 3] = u[t - 1] * (h[n1 - 1] / (h[n1 - 0] * (h[n1 - 1] + h[n1 - 0])))
-        B[s + n1 - 1] = 0.0
+                    B[s+i-1] = 0.0
+        A[s+n1-1, s+n1-1] = u[t-1] * (1 / h[n1-1] + 1 / (h[n1-1] + h[n1])) + Et12[L[n1-1, 1]-1] - Es12[L[n1-1, 1]-1] * wt[t-1] / 2
+        A[s+n1-1, s+n1] = -u[t-1] * (1 / h[n1-1] + 1 / h[n1])
+        A[s+n1-1, s+n1-3] = u[t-1] * (h[n1-1] / (h[n1] * (h[n1-1] + h[n1])))
+        B[s+n1-1] = 0.0
         l = copy(t)
-        if l == N / 2 + 1 and N > 2:
+        if l == N/2 + 1 and N > 2:
             for p in arange(l + 1, N).reshape(-1):
-                S = (p - 1) * n1
+                S = (p-1) * n1
                 for i in arange(1, n1).reshape(-1):
                     if L[i, 1] == 3:
-                        A[s + i - 1, S + i - 1] = -Es12[L[i - 1, 1] - 1] * wt[p - 1] / 2
+                        A[s+i-1, S+i-1] = -Es12[L[i-1, 1]-1] * wt[p-1] / 2
                     else:
-                        A[s + i - 1, S + i - 1] = -Es12[L[i, 1] - 1] * wt[p - 1] / 2
+                        A[s+i-1, S+i-1] = -Es12[L[i, 1]-1] * wt[p-1] / 2
         else:
-            if l > N / 2 + 1 and N > 2:
-                for p in arange(N / 2 + 1, l - 1).reshape(-1):
-                    S = (p - 1) * n1
+            if l > N/2 + 1 and N > 2:
+                for p in arange(N/2 + 1, l-1).reshape(-1):
+                    S = (p-1) * n1
                     for i in arange(1, n1).reshape(-1):
                         if L[i, 1] == 3:
-                            A[s + i - 1, S + i - 1] = -Es12[L[i - 1, 1] - 1] * wt[p - 1] / 2
+                            A[s+i-1, S+i-1] = -Es12[L[i-1, 1]-1] * wt[p-1] / 2
                         else:
-                            A[s + i - 1, S + i - 1] = -Es12[L[i, 1] - 1] * wt[p - 1] / 2
+                            A[s+i-1, S+i-1] = -Es12[L[i, 1]-1] * wt[p-1] / 2
                 for p in arange(l + 1, N).reshape(-1):
-                    S = (p - 1) * n1
+                    S = (p-1) * n1
                     for i in arange(1, n1).reshape(-1):
                         if L[i, 1] == 3:
-                            A[s + i - 1, S + i - 1] = -Es12[L[i - 1, 1] - 1] * wt[p - 1] / 2
+                            A[s+i-1, S+i-1] = -Es12[L[i-1, 1]-1] * wt[p-1] / 2
                         else:
-                            A[s + i - 1, S + i - 1] = -Es12[L[i, 1] - 1] * wt[p - 1] / 2
+                            A[s+i-1, S+i-1] = -Es12[L[i, 1]-1] * wt[p-1] / 2
         a = 0
-        for p in arange(1, N / 2).reshape(-1):
-            S = (p - 1) * n1
-            for i in arange(1, n1 - 1).reshape(-1):
+        for p in arange(1, N/2).reshape(-1):
+            S = (p-1) * n1
+            for i in arange(1, n1-1).reshape(-1):
                 if L[i, 1] == 3:
-                    A[s + i - 1, S + i] = - Es12[L[i - 1, 1] - 1] * wt[p - 1] / 2
+                    A[s+i-1, S+i] = -Es12[L[i-1, 1]-1] * wt[p-1] / 2
                 else:
-                    A[s + i - 1, S + i] = - Es12[L[i, 1] - 1] * wt[p - 1] / 2
-            a = a + (Es12[L[n1 - 1, 1] - 1] * wt[p - 1] * y_ / 2)
-        B[s + n1 - 1] = B[s + n1 - 1] + a
+                    A[s+i-1, S+i] = - Es12[L[i, 1]-1] * wt[p-1] / 2
+            a = a + (Es12[L[n1-1, 1]-1] * wt[p-1] * y_ / 2)
+        B[s+n1-1] = B[s+n1-1] + a
     Z = numpy.linalg.solve(A, B)
     return
