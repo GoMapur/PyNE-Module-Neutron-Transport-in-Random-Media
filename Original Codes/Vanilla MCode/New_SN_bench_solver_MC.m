@@ -155,7 +155,7 @@ if x(1,1)~=T
             end
         end
         j=j+1;
-        
+
         if t1==T && (x(j,1)-x(j-1,1))<H
             extra(i)=extra(i)+1;
             L(n1+1,1)=(x(j,1)+x(j-1,1))/2;
@@ -193,7 +193,7 @@ for t=1:N/2
             if i==n1-1
                 A(s+i,s+i)=-u(t)*(1/h(i)+1/(h(i)+h(i+1)))+Et12(L(i+1,2))-Es12(L(i+1,2))*wt(t)/2;
                 A(s+i,s+i+1)=u(t)*(1/h(i)+1/h(i+1));
-		if L(i+1,1)>=minleft && L(i+1,1)<=maxright 
+		if L(i+1,1)>=minleft && L(i+1,1)<=maxright
                 	B(s+i)=u(t)*y_*(h(i)/(h(i+1)*(h(i)+h(i+1))))+Q12(L(i+1,2))/2;
 		else
 			B(s+i)=u(t)*y_*(h(i)/(h(i+1)*(h(i)+h(i+1))));
@@ -223,7 +223,7 @@ for t=1:N/2
     A(s+n1,s+n1)=u(t)*(h(n1)-h(n1-1))/(h(n1)*h(n1-1))+Et12(L(n1,2))-Es12(L(n1,2))*wt(t)/2;
     %B(s+n1)=-u(t)*y_*h(n1-1)/(h(n1)*(h(n1-1)+h(n1)))+Q12(L(n1,2))/2;
     B(s+n1)=-u(t)*y_*h(n1-1)/(h(n1)*(h(n1-1)+h(n1)));
-    
+
     % Remaining Blocks in same direction up to N/2..............
     l=t;
     if l==1 && N>2
@@ -258,9 +258,9 @@ for t=1:N/2
                 end;
             end
         end
-      
+
     end
-    
+
     % Blocks from N/2 to N........................................
     a=0;
     for p=1:N/2
@@ -276,7 +276,7 @@ for t=1:N/2
     end
     B(s+1)=B(s+1)+a;
 end
-    
+
 % Diagonal Block of matrix from N/2+1 to N.........................
 for t=N/2+1:N
     s=(t-1)*n1;
@@ -320,7 +320,7 @@ for t=N/2+1:N
     A(s+n1,s+n1-2)=u(t)*(h(n1)/(h(n1-1)*(h(n1)+h(n1-1))));
     %B(s+n1)=Q12(L(n1,2))/2;
     B(s+n1)=0.;
-    
+
     % Remaining Blocks in same direction up to N..............
     l=t;
     if l==N/2+1 && N>2
@@ -355,9 +355,9 @@ for t=N/2+1:N
                 end
             end
         end
-      
+
     end
-    
+
     % Blocks from 1 to N/2........................................
     a=0;
     for p=1:N/2
