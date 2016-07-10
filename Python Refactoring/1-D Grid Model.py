@@ -71,7 +71,11 @@ class Interval():
         return self.len()
 
 class Grid():
-    def __init__(self, total_len, total_point_num = -1, discretization_stepsize = -1, boundary_cond, materials):
+    # TODO: look at comments
+    """ Note: this is an abstract class, plz dont initialzie this class.
+        Will include its implemented class here later #TODO
+    """
+    def __init__(self, total_len, boundary_cond, materials):
         """ Note: if the system is set to automatically decide discretization,
             then do not use this initialization method. Since total_point_num
             will be changed when generating the grid, so before the grid's
@@ -81,12 +85,9 @@ class Grid():
             size.
         """
         self.len = total_len
-        self.n = total_point_num
-        self.step_size = discretization_stepsize
         self.bc_L = boundary_cond[0]
         self.bc_R = boundary_cond[1]
         self.materials = sorted(materials, lambda x: x.index())
-        self.grid = []
         self.intervals = []
 
     def len(self):
@@ -94,18 +95,6 @@ class Grid():
             not some abstract meaning of 'length'
         """
         return self.len
-
-    def point_num(self):
-        self.__check_n()
-        return self.n
-
-    def step_size(self):
-        self.__check_s()
-        return self.step_size
-
-    def avg_step_size(self):
-        self.__check_n()
-        return self.len/self.n
 
     def boundary_condition(self):
         return [self.bc_L, self.bc_R]
@@ -122,37 +111,75 @@ class Grid():
     def material_num(self):
         return len(self.materials)
 
-    def __check_n(self):
-        if self.n == -1:
-            raise Exception("The grid needs to be generated since you are using a nontrivial grid.")
-
-    def __check_s(self):
-        if self.n == -1:
-            raise Exception("This is a complex grid so there is no fixed step size, plz use avg_step_size method instead.")
-
     def check_init_state(self):
-        return len(self.grid) > 1 and len(self.intervals) > 0
+        return len(self.intervals) > 0
+
+    def intervalsAt(self, place):
+        raise NotImplementedError
+
+    def isInterface(self, place):
+        raise NotImplementedError
 
 class Stochastic_Gird(Grid):
     """ This class if for stochastic situation. More docs later
         Note we should keep method seperate from grid to retain extensibility.
     """
-    def __init__(self, total_len, base_points_num, boundary_cond, materials):
+    def __init__(self, total_len, boundary_cond, materials):
         Grid.__init__(self, total_len = total_len, boundary_cond = boundary_cond, materials = materials)
-        self.base_points_num = base_points_num
-        # Start decide which material goes first
-        assert(len(self.materials) != 1, "Stochastic case should have at least two materials.")
+        self.interfaces = set([0.0])
+        self.interfaceToInterval = {}
+        assert(len(self.materials) > 1, "Stochastic case should have at least two materials.")
         thinkness_distribution = [mat.thickness() for mat in self.materials]
-        cur_mat = Utility.cumulative_possibility(thinkness_distribution, sum(thinkness_distribution), self.materials)
         # Generate the intervals
-        cur_left = 0
-        cur_total_len = 0
+        cur_left = 0.0
+        cur_total_len = 0.0
         while cur_total_len < self.len:
+            cur_mat = Utility.cumulative_possibility(thinkness_distribution, self.materials)
             cur_total_len += random.expovariate(1 / cur_mat.thickness())
             cur_total_len = min(self.len, cur_total_len)
+            self.interfaces.add(cur_total_len)
             self.intervals += [Interval(cur_mat, cur_left, cur_total_len)]
+            # Below is dealing with x -> interval in special case
+            if cur_left == 0.0:
+                self.interfaceToInterval[cur_total_len] = [None, self.interval[-1]]
+            elif cur_total_len == self.len:
+                self.interfaceToInterval[cur_total_len] = [self.interval[-1], None]
+            else:
+                self.interfaceToInterval[cur_total_len] = [self.interval[-2], self.interval[-1]]
             cur_left = cur_total_len
-            cur_mat = Utility.cumulative_possibility(thinkness_distribution, sum(thinkness_distribution), self.materials)
+
+    def intervalsAt(self, place):
+        """ Because the number of total points is considerable, use a binary
+            search to find the right interval. If you wish you can change the
+            data structure to a rbtree but I dont think it will improve the
+            efficiencya lot.
+            Important: This function returns a list in case the point is at an
+            interval!!!
+        """
+        if place in self.interfaces:
+            ret = self.interfaceToInterval[place]
+            if ret[0] is None:
+                return [ret[1]]
+            elif ret[1] is None:
+                return [ret[1]]
+            else:
+                return ret
+        return [self.__find_helper(0, len(self.intervals), place)]
+
+    def __find_helper(self, start_index, end_index, place):
+        bisect_index = int((start_index + end_index) / 2)
+        bisect_interval  = self.intervals[bisect_index]
+        start_interval = self.intervals[start_index]
+        end_interval = self.intervals[end_interval]
+        if start_index == end_index:
+            return start_interval
+        if place >= start_interval.left() and place <= bisect_interval.right():
+            return self.__find_helper(start_index, bisect_index, place)
+        else:
+            return self.__find_helper(bisect_index + 1, end_index, place)
+
+    def isInterface(self, place):
+        return place in self.interfaces
 
 
 class Utility():

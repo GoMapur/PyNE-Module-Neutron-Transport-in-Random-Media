@@ -191,7 +191,7 @@ for t=1:N/2
     for i=2:n1-1
         if L(i,2)==3
             if i==n1-1
-                A(s+i,s+i)=-u(t)*(1/h(i)+1/(h(i)+h(i+1)))+Et12(L(i+1,2))-Es12(L(i+1,2))*wt(t)/2;
+                A(s+i,s+i)= -u(t) * (1/h(i) + 1/(h(i)+h(i+1))) + Et12(L(i+1,2)) - Es12(L(i+1,2)) * wt(t)/2;
                 A(s+i,s+i+1)=u(t)*(1/h(i)+1/h(i+1));
 		if L(i+1,1)>=minleft && L(i+1,1)<=maxright
                 	B(s+i)=u(t)*y_*(h(i)/(h(i+1)*(h(i)+h(i+1))))+Q12(L(i+1,2))/2;
@@ -199,7 +199,7 @@ for t=1:N/2
 			B(s+i)=u(t)*y_*(h(i)/(h(i+1)*(h(i)+h(i+1))));
 		end
             else
-                A(s+i,s+i)=-u(t)*(1/h(i)+1/(h(i)+h(i+1)))+Et12(L(i+1,2))-Es12(L(i+1,2))*wt(t)/2;
+                A(s+i,s+i)= -u(t) * (1/h(i) + 1/(h(i)+h(i+1))) + Et12(L(i+1,2)) - Es12(L(i+1,2))*wt(t)/2;
                 A(s+i,s+i+1)=u(t)*(1/h(i)+1/h(i+1));
                 A(s+i,s+i+2)=-u(t)*(h(i)/(h(i+1)*(h(i)+h(i+1))));
 		if L(i+1,1)>=minleft && L(i+1,1)<=maxright
@@ -209,9 +209,9 @@ for t=1:N/2
 		end
             end
         else
-            A(s+i,s+i-1)=-u(t)*h(i)/(h(i-1)*(h(i-1)+h(i)));
-            A(s+i,s+i)=u(t)*(h(i)-h(i-1))/(h(i)*h(i-1))+Et12(L(i,2))-Es12(L(i,2))*wt(t)/2;
-            A(s+i,s+i+1)=u(t)*h(i-1)/(h(i)*(h(i-1)+h(i)));
+            A(s+i,s+i-1)= -u(t) * h(i)/(h(i-1) * (h(i-1)+h(i)));
+            A(s+i,s+i)= u(t) * (h(i)-h(i-1)) / (h(i)*h(i-1)) + Et12(L(i,2)) - Es12(L(i,2)) * wt(t)/2;
+            A(s+i,s+i+1)=u(t) * h(i-1)/(h(i) * (h(i-1)+h(i)));
 	    if L(i,1)>=minleft && L(i,1)<=maxright
             	B(s+i)=Q12(L(i,2))/2;
 	    else
