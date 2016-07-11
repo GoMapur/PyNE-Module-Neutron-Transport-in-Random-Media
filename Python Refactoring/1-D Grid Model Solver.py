@@ -81,12 +81,15 @@ class Model_1D_Stochastic_Finite_Step_Solver(Model_1D_Numerical_Solver):
 
     def solve(self):
         """ Build matrix and solve, more docs later
+            Currently using three points to simulate. We shall try more points
+            later
+            # TODO: More flexibility that can use more points (say, 5?)
         """
         mesh_point_num = len(self.mesh)
         matrix_size = discrete_direction_num * mesh_point_num
         A = [[0 for _ in range(matrix_size)] for __ in range(matrix_size)]
         B = [0 for _ in range(matrix_size)]
-        
+
 
 
     def add_point(self, x):
