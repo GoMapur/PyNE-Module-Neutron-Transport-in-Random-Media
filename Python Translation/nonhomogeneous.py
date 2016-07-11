@@ -323,7 +323,7 @@ def non_homogenous_solver(rod_slab, N, T, m1, m2, n, N, Es1, Es2, Et1, Et2, yo, 
 
     # Diagonal Block of matrix from N/2+1 to N.........................
     for t in range(N/2, N):
-        s = t * (n1+1)
+        s =  * n1
         A[s, s] = u[t-1] * (h[1] - h[0]) / (h[1] * h[0]) + Et12[L[0, 1]-1] - Es12[L[0, 1]-1] * wt[t-1] / 2
         A[s, s+1] = u[t-1] * h[0] / (h[1] * (h[0] + h[1]))
         B[s] = u[t-1] * yo * h[1] / (h[0] * (h[0] + h[1]))

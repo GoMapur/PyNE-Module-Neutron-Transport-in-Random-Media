@@ -14,28 +14,38 @@
 class Model_Material():
     material_index_counter = 0
 
-    def __init__(self, name = None, material_thinkness, material_cross_section, material_isotropic_source):
+    def __init__(self, name = None, thickness, cross_section, scattering_ratio, homogeneous_isotropic_source):
         """ Note if you are going to make this program parallel, then there
             might be conflicts with indexing material automatically correctly.
             If that's the case, plz either place a lock on index or use material
             name to differentiate them.
         """
-        self.thinkness = material_thinkness
-        self.cross_section = material_cross_section
-        self.source = material_isotropic_source
+        self.thickness = thickness
+        self.cross_section = cross_section
+        self.scattering_ratio = scattering_ratio
+        self.source = homogeneous_isotropic_source
         self.index = material_index_counter
         if name is None:
             self.name = "__inner_mat_" + str(material_index_counter)
-            material_index_counter += 1
+        material_index_counter += 1
 
     def thinkness(self):
-        return self.thinkness
+        return self.thickness
 
     def cross_section(self):
         return self.cross_section
 
     def source(self):
         return self.source
+
+    def scattering_ratio(self):
+        return self.scattering_ratio
+
+    def scattering_section(self):
+        return self.scattering_ratio * self.cross_section
+
+    def unaffected_section(self):
+        return self.cross_section() - self.scattering_section()
 
     def name(self):
         return self.name
@@ -69,6 +79,15 @@ class Interval():
 
     def step_size(self):
         return self.len()
+
+    def isWithinInterval(self, place):
+        return self.left < place and place < self.right
+
+    def isAtBoundary(self, place):
+        return self.left == place or self.right == place
+
+    def mid_point(self):
+        return (self.left + self.right) / 2.0
 
 class Grid():
     # TODO: look at comments
@@ -167,7 +186,7 @@ class Stochastic_Gird(Grid):
         return [self.__find_helper(0, len(self.intervals), place)]
 
     def __find_helper(self, start_index, end_index, place):
-        bisect_index = int((start_index + end_index) / 2)
+        bisect_index = (start_index + end_index) / 2
         bisect_interval  = self.intervals[bisect_index]
         start_interval = self.intervals[start_index]
         end_interval = self.intervals[end_interval]
@@ -181,6 +200,12 @@ class Stochastic_Gird(Grid):
     def isInterface(self, place):
         return place in self.interfaces
 
+    def __iter__(self):
+        """ This iterator is for iteration over all intervals,
+            note not materials
+        """
+        for interval in self.intervals:
+            yield interval
 
 class Utility():
     def cumulative_possibility(distribution, distribution_sum, corresponding_choices):
