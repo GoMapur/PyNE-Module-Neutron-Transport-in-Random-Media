@@ -180,7 +180,7 @@ class Stochastic_Gird(Grid):
             if ret[0] is None:
                 return [ret[1]]
             elif ret[1] is None:
-                return [ret[1]]
+                return [ret[0]]
             else:
                 return ret
         return [self.__find_helper(0, len(self.intervals), place)]
