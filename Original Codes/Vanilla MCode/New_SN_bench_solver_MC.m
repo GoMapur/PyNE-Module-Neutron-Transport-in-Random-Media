@@ -212,11 +212,11 @@ for t=1:N/2
             A(s+i,s+i-1)=-u(t)*h(i)/(h(i-1)*(h(i-1)+h(i)));
             A(s+i,s+i)=u(t)*(h(i)-h(i-1))/(h(i)*h(i-1))+Et12(L(i,2))-Es12(L(i,2))*wt(t)/2;
             A(s+i,s+i+1)=u(t)*h(i-1)/(h(i)*(h(i-1)+h(i)));
-      	    if L(i,1)>=minleft && L(i,1)<=maxright
-                B(s+i)=Q12(L(i,2))/2;
-      	    else
-      		      B(s+i)=0.;
-      	    end
+  	    if L(i,1)>=minleft && L(i,1)<=maxright
+              	B(s+i)=Q12(L(i,2))/2;
+  	    else
+  		B(s+i)=0.;
+  	    end
         end
     end
     A(s+n1,s+n1-1)=-u(t)*h(n1)/(h(n1-1)*(h(n1-1)+h(n1)));

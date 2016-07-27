@@ -25,18 +25,21 @@ class Model_1D_Stochastic_Finite_Step_Benchmark(Model_1D_Benchmark):
 
     def benchmark_once(self):
         # NOTE: Gauss-Legendre is taken care of inside the solver instead of the
-        # benchmark, It has an internal cache to dealwith redundant calculation
+        #       benchmark, It has an internal cache to dealwith redundant
+        #       calculation
+        # TODO: Need to add boundary points to the solution to make it symmetric
+        #       and complete.
         grid_model = Stochastic_Gird(self.total_len, self.boundary_cond, self.materials)
         solver = Model_1D_Stochastic_Finite_Step_Solver(grid_model, self.point_num, gauss_discrete_direction_num = self.gauss_discrete_direction_num)
         solution = solver.solve()
+        
         return solution
 
     def benchmark(self):
-        # TODO: how to do the later proccessing is a mystery, needs update
-        while balabalabala:
+        # TODO: This fixed number should changed to be a indicator
+        #       showing when should we stop
+        while 10000:
             solution = self.benchmark_once()
-            # Adjust points but need to figure out what's actually happenning # TODO
-            actual_point_num = solver.point_num()
-            X = [0.0] * (self.gauss_discrete_direction_num * self.point_num)
-            for i in range(self.gauss_discrete_direction_num / 2):
-                X[i * self.point_num] = solution[i * actual_point_num]
+
+
+class Model_1D_

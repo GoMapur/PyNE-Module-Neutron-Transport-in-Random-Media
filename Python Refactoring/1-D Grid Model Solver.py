@@ -14,7 +14,7 @@
 import numpy as np
 
 class Spatial_Point():
-    def __init__(self, place, index, material = None):
+    def __init__(self, place, material = None, index = -1):
         self.material = None
         self.index = index
         self.x = place
@@ -28,16 +28,11 @@ class Spatial_Point():
     def index(self):
         return self.index
 
+    def setIndex(self, n):
+        self.index = n
+
     def x(self):
         return self.x
-
-    def counter(self):
-        start = 0
-        def f():
-            ret = start
-            start += 1
-            return ret
-        return f
 
 class Model_1D_Numerical_Solver():
     cache = {}
@@ -110,12 +105,16 @@ class Model_1D_Stochastic_Finite_Step_Solver(Model_1D_Numerical_Solver):
         else:
             self.base_step_size = base_step_size
             self.base_point_num = round(grid_model.len() / base_step_size)
-        point_counter = Spatial_Point.counter()
-        self.mesh += [Spatial_Point(0.0, point_counter(), self.grid.intervalsAt(0.0)[0].material())]
         # Start constructing the mesh, note we will add additional points on
         # interface and inside intercal if the basic points number and step
         # size is not enought to cover all the intervals
-        # TODO: BUG may exist, need to debug
+        # TODO: BUG may exist, need to debug， Is n * step_size guaranteed to
+        #       be the same as total length??
+        for i in range(self.base_point_num):
+            if grid_model.isInterface(self.base_step_size * i):
+                self.mesh += [Spatial_Point(self.base_step_size * i, None)]
+            else:
+                self.mesh += [Spatial_Point(self.base_step_size * i, self.grid.intervalsAt(self.base_step_size * i)[0].material()))]
         for interval in grid_model:
             while self.mesh[-1].x() < interval.right():
                 last_point = self.mesh[-1].x()
@@ -128,7 +127,7 @@ class Model_1D_Stochastic_Finite_Step_Solver(Model_1D_Numerical_Solver):
                         self.mesh += [Spatial_Point(interval.mid_point(), point_counter(), interval.material()), Spatial_Point(interval.right(), point_counter())]
                     else：
                         self.mesh += [Spatial_Point(interval.right(), point_counter())]
-        self.mesh[-1] = Spatial_Point(self.mesh[-1].x(), point_counter(), self.grid.intervalsAt(self.grid.len())[0].material())
+
         self.mesh_interval_len = [(self.mesh[i+1].x() - self.mesh[i].x()) for i in range(len(self.mesh) - 1)]
         self.n = len(self.mesh)
 
@@ -147,6 +146,8 @@ class Model_1D_Stochastic_Finite_Step_Solver(Model_1D_Numerical_Solver):
         u = self.gauss_u()
         wt = self.gauss_weight()
         h = self.mesh_interval_len
+
+        # First half
         for dir_index in range(self.discrete_direction_num / 2):
             dir_submatrix_index = dir_index * mesh_point_num
             # Deal with edge case, in which left part does not exist
@@ -206,8 +207,7 @@ class Model_1D_Stochastic_Finite_Step_Solver(Model_1D_Numerical_Solver):
                             A[dir_submatrix_index + j][S + j] = -self.mesh[j+1].scattering_section() * wt[i] / 2.0
                         else:
                             A[dir_submatrix_index + j][S + j] = -self.mesh[j].scattering_section() * wt[i] / 2.0
-            # TODO: figure out what this qunat doing
-            accumulative_quant = 0.0
+            # TODO: figure out what this accumulative qunat doing
             for i in range(self.discrete_direction_num):
                 S = (self.discrete_direction_num / 2 + i) * self.n
                 for j in range(self.n - 1):
@@ -215,7 +215,86 @@ class Model_1D_Stochastic_Finite_Step_Solver(Model_1D_Numerical_Solver):
                         A[dir_submatrix_index + j][S + j] = -self.mesh[j].scattering_section() * wt[self.discrete_direction_num / 2 + i] / 2.0
                     else:
                         A[dir_submatrix_index + j][S + j] = -self.mesh[j - 1].scattering_section() * wt[self.discrete_direction_num / 2 + i] / 2.0
-                accumulative_quant += 
+                B[dir_submatrix_index] += self.mesh[0].material().scattering_section() * wt[self.discrete_direction_num / 2 + i] * self.grid.left_boundary_condition() / 2.0
+
+        # Second half, which is basically the same, thus plz refactorizing this part
+        # TODO: Recheck formula with Richard, thus leaving the second part unchanged
+        for dir_index in range(self.discrete_direction_num / 2, self.discrete_direction_num):
+            dir_submatrix_index = dir_index * mesh_point_num
+            # Deal with edge case, in which left part does not exist
+            # TODO: Test different points, 2,3,4,5, make this more flexible
+            A[dir_submatrix_index][dir_submatrix_index] = -u[dir_index] / h[0] + self.mesh[0].material().cross_section() - self.mesh[0].material().scattering_section() * wt[dir_index] / 2.0
+            A[dir_submatrix_index][dir_submatrix_index+1] = u[dir_index] / h[0]
+            # TODO: Why this line has two versions in the original code?
+            #       Shouldnt the right side of the matrix is Q/2?
+            #       PS: Ask what is boundary condition
+            B[dir_submatrix_index] = self.mesh[0].material().source() / 2.0
+            _h = h[dir_submatrix_index + self.n - 2]
+            __h = h[dir_submatrix_index + self.n - 3]
+            A[dir_submatrix_index + self.n - 1][dir_submatrix_index + self.n - 2] = -u[dir_index] * _h/__h * 1/(_h + __h);
+            A[dir_submatrix_index + self.n - 1][dir_submatrix_index + self.n - 1]= u[dir_index] * (_h - __h)/(_h * __h)) + self.mesh[-1].material().cross_section()-self.mesh[-1].material().scattering_section() * wt[dir_index] / 2.0
+            B(s+n1)= -u[dir_index] * self.grid.right_boundary_condition() * __h/(_h*(_h + __h)) + self.mesh[-1].material().source() / 2.0
+            # The first and last points are already taken care of
+            for spatial_point in self.mesh[1:-1]:
+                cur_index = dir_submatrix_index + spatial_point.index()
+                p_index = spatial_point.index()
+                h_ = h[p_index]
+                _h = h[p_index - 1]
+                if spatial_point.isInterface():
+                    # Is that a BUG in original code?
+                    next_mat = self.mesh[p_index + 1].material()
+                    if p_index == self.n - 2:
+                        A[cur_index][cur_index] = -u[dir_index] / h_ + next_mat.cross_section() - next_mat.scattering_section() * wt[dir_index] / 2.0
+                        A[cur_index][cur_index + 1] = u[dir_index] / h_
+                        B[cur_index] = u[dir_index] * self.grid.right_boundary_condition() + next_mat.source() / 2.0
+                    else:
+                        h__ = h[p_index + 1]
+                        th = h_ + h__
+                        hh = 1/h_ + 1/h__
+                        dh = h_/h__
+                        A[cur_index][cur_index] = -u[dir_index] * (1.0/h_ + 1.0/th) + next_mat.cross_section() - next_mat.scattering_section() * wt[dir_index] / 2.0
+                        A[cur_index][cur_index + 1] = u[dir_index] * hh
+                        A[cur_index][cur_index + 2] = -u[dir_index] * dh * 1.0/th
+                        B[cur_index] = next_mat.source() / 2.0
+                else:
+                    cur_mat = spatial_point.material()
+                    th = h_ + _h
+                    dh = h_/_h
+                    ddh = h_ - _h
+                    mh = h_ * _h
+                    A[cur_index][cur_index - 1] = -u[dir_index] * dh * 1.0/th
+                    A[cur_index][cur_index] = u[dir_index] * ddh/mh + cur_mat.cross_section() - cur_mat.scattering_section() * wt[dir_index] / 2.0
+                    A[cur_index][cur_index + 1] = u[dir_index] * 1.0/dh * 1.0/th
+                    B[cur_index] = cur_mat.source() / 2.0
+            # TODO: Ask for auxiliary conditions, also this part needs recode to make it look better
+            if self.discrete_direction_num > 2:
+                for j in range(self.n):
+                    for i in range(self.discrete_direction_num / 2):
+                        if i == dir_index:
+                            continue
+                        S = i * self.n
+                        # Still the same question, what if this is the last point? Will it cause a index out of range?
+                        if self.mesh[j].isInterface():
+                            A[dir_submatrix_index + j][S + j] = -self.mesh[j+1].scattering_section() * wt[i] / 2.0
+                        else:
+                            A[dir_submatrix_index + j][S + j] = -self.mesh[j].scattering_section() * wt[i] / 2.0
+            # TODO: figure out what this accumulative qunat doing
+            for i in range(self.discrete_direction_num):
+                S = (self.discrete_direction_num / 2 + i) * self.n
+                for j in range(self.n - 1):
+                    if self.mesh[j + 1].isInterface():
+                        A[dir_submatrix_index + j][S + j] = -self.mesh[j].scattering_section() * wt[self.discrete_direction_num / 2 + i] / 2.0
+                    else:
+                        A[dir_submatrix_index + j][S + j] = -self.mesh[j - 1].scattering_section() * wt[self.discrete_direction_num / 2 + i] / 2.0
+                B[dir_submatrix_index] += self.mesh[0].material().scattering_section() * wt[self.discrete_direction_num / 2 + i] * self.grid.left_boundary_condition() / 2.0
+        # Return the solution of this linear system, note the result is both undetermined and unchecked, need to put more tests for this solve procedure and refactorizing this since
+        # it is such a big block lol
+        return numpy.linalg.solve(A, B)
+
+    def solve_required_points(self):
+        complete_solution = self.solve()
+        # Then we should throw away all additional points
+
 
     def add_point(self, x):
         for i in range(len(self.mesh)):
