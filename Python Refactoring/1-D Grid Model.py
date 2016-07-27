@@ -11,6 +11,8 @@
 # my honor.
 # Mingjian Lu, July 2016
 
+import numpy as np
+
 class Model_Material():
     material_index_counter = 0
 

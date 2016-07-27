@@ -38,7 +38,7 @@ if rod_slab==1
         %display('SOLVING PROBLEM IN SLAB GEOMETRY & RANDOM Medium!!');
         %display('  ')
     end
-    
+
 else
     rod_slab=0;
     if med==1
@@ -113,7 +113,7 @@ cond=0;
 rr=0;tt=0; b=0;
 while(cond==0)
     [Z,extra,n1,randseed] = New_SN_bench_solver(T,m1,m2,n,N,Es1,Es2,Et1,Et2,yo,y_,Q1,Q2,u,wt,randseed,med);
-    
+
             % Adjusting points..........................
             X=zeros(n*N,1);
             for i=1:N/2
@@ -124,7 +124,7 @@ while(cond==0)
                     X((i-1)*n+j)=Z((i-1)*n1+k);
                     k=k+1;
                 end
-            end            
+            end
             for i=N/2+1:N
                 k=1;
                 for j=1:n
@@ -133,7 +133,7 @@ while(cond==0)
                     k=k+1;
                 end
             end
-            
+
             Y=zeros(N*(n+1),1);
             % Adding boundary conditions...............
             i=1;
@@ -151,12 +151,12 @@ while(cond==0)
                 i=i+1;
                 for j=i+1:t*n+t
                     Y(j)=X(j-t);
-                end 
+                end
                 i=j;
             end
 
-            
-            % Calculating Reflection, Transmission and Scalar Flux......     
+
+            % Calculating Reflection, Transmission and Scalar Flux......
             RL=0;
             for t=1:N/2
                 s=(t-1)*n;
@@ -173,9 +173,9 @@ while(cond==0)
                 s=(t-1)*m;
                 for i=1:m
                     SCAL(i)=SCAL(i)+wt(t)*Y(s+i);
-                end 
+                end
             end
-            
+
             %ADDING VALUES
             maximum=T*max(Q1,Q2)+yo+y_;
             if abs(RL+TR)<=maximum
@@ -191,7 +191,7 @@ while(cond==0)
                 a=a-1;
                 b=b+1;
             end
-            
+
             %CHECKING STATISTICAL ERROR
             if a>5000
                 test1=transm/a-MTR;
@@ -229,7 +229,7 @@ while(cond==0)
             end
             a
             a=a+1;
-          
+
 end
 a=a-1;
 SF=SF./a;
@@ -238,6 +238,3 @@ kk=T/n;
 p=0:kk:T;                   % p is line along x-axis.
 plot(p,SF,'r'); hold on
 plot(p,SF2,'b');
-
-
-
