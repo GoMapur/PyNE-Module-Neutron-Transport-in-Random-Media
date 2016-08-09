@@ -213,9 +213,19 @@ class Periodic_Grid(Grid):
     def __init__():
 
 
-class Test_Grid(Grid):
+class Test_Grid(Stochastic_Gird):
     # TODO: Note this grid is for testing usage, eg. 10 points.
     #       You can add points and test use other solvers
+    def __init__(self, total_len, boundary_cond, materials, interval_list):
+        Grid.__init__(self, total_len, boundary_cond, materials)
+        self.intervals = interval_list
+        self.interfaces = set([0.0])
+        self.interfaceToInterval = {0.0: [None, interval_list[0].material()], self.len: [interval_list[-1].material(), None]}
+        lastInterval = None
+        for interval in interval_list:
+            self.interfaces.add(interval.right)
+            self.interfaceToInterval[interval.right] =  [lastInterval.material(), interval.material()]
+            lastInterval = interval
 
 class Utility():
     def cumulative_possibility(distribution, distribution_sum, corresponding_choices):

@@ -14,10 +14,11 @@
 import numpy as np
 
 class Spatial_Point():
-    def __init__(self, place, material = None, index = -1):
+    def __init__(self, place, material = None, isRequired = True):
         self.material = None
         self.index = index
         self.x = place
+        self.rek = isRequired
 
     def isInterface(self):
         return self.material is None
@@ -25,14 +26,11 @@ class Spatial_Point():
     def material(self):
         return self.material
 
-    def index(self):
-        return self.index
-
-    def setIndex(self, n):
-        self.index = n
-
     def x(self):
         return self.x
+
+    def required():
+        return self.rek
 
 class Model_1D_Numerical_Solver():
     cache = {}
@@ -108,22 +106,27 @@ class Model_1D_Stochastic_Finite_Step_Solver(Model_1D_Numerical_Solver):
         # Start constructing the mesh, note we will add additional points on
         # interface and inside intercal if the basic points number and step
         # size is not enought to cover all the intervals
+        # NOTE: The process might consume a lot of time plz revise this if that
+        #       becomes an issue
         # TODO: BUG may exist, need to debug， Is n * step_size guaranteed to
         #       be the same as total length??
         for i in range(self.base_point_num):
-            if grid_model.isInterface(self.base_step_size * i):
-                self.mesh += [Spatial_Point(self.base_step_size * i, None)]
+            cur_point = min(self.base_step_size * i, self.grid.len())
+            if grid_model.isInterface(cur_point):
+                self.mesh += [Spatial_Point(cur_point, None)]
             else:
-                self.mesh += [Spatial_Point(self.base_step_size * i, self.grid.intervalsAt(self.base_step_size * i)[0].material()))]
+                self.mesh += [Spatial_Point(cur_point, self.grid.intervalsAt(self.base_step_size * i)[0].material()))]
+        self.mesh += [Spatial_Point(0.0, None)]
+        last_required_point = 0.0
         for interval in grid_model:
             while self.mesh[-1].x() < interval.right():
-                last_point = self.mesh[-1].x()
-                next_base_point = self.base_step_size + last_point
+                next_base_point = self.base_step_size + last_required_point
                 if next_base_point < interval.right():
                     # If adding a point does not cause exceeding the interface
-                    self.mesh += [Spatial_Point(next_base_point, point_counter(), interval.material())]
+                    self.mesh += [Spatial_Point(next_base_point, interval.material())]
+                    last_required_point = next_base_point
                 elif next_base_point >= interval.right():
-                    if interval.left() == last_point:
+                    if interval.left() == self.mesh[-1].x():
                         self.mesh += [Spatial_Point(interval.mid_point(), point_counter(), interval.material()), Spatial_Point(interval.right(), point_counter())]
                     else：
                         self.mesh += [Spatial_Point(interval.right(), point_counter())]
@@ -158,7 +161,6 @@ class Model_1D_Stochastic_Finite_Step_Solver(Model_1D_Numerical_Solver):
             #       Shouldnt the right side of the matrix is Q/2?
             #       PS: Ask what is boundary condition
             B[dir_submatrix_index] = self.mesh[0].material().source() / 2.0
-            _h = h[dir_submatrix_index + self.n - 2]
             __h = h[dir_submatrix_index + self.n - 3]
             A[dir_submatrix_index + self.n - 1][dir_submatrix_index + self.n - 2] = -u[dir_index] * _h/__h * 1/(_h + __h);
             A[dir_submatrix_index + self.n - 1][dir_submatrix_index + self.n - 1]= u[dir_index] * (_h - __h)/(_h * __h)) + self.mesh[-1].material().cross_section()-self.mesh[-1].material().scattering_section() * wt[dir_index] / 2.0
@@ -219,7 +221,7 @@ class Model_1D_Stochastic_Finite_Step_Solver(Model_1D_Numerical_Solver):
 
         # Second half, which is basically the same, thus plz refactorizing this part
         # TODO: Recheck formula with Richard, thus leaving the second part unchanged
-        for dir_index in range(self.discrete_direction_num / 2, self.discrete_direction_num):
+        for dir_index in range(self.discrete_direction_num / 2):
             dir_submatrix_index = dir_index * mesh_point_num
             # Deal with edge case, in which left part does not exist
             # TODO: Test different points, 2,3,4,5, make this more flexible
