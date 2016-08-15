@@ -209,10 +209,6 @@ class Stochastic_Gird(Grid):
         for interval in self.intervals:
             yield interval
 
-class Periodic_Grid(Grid):
-    def __init__():
-
-
 class Test_Grid(Stochastic_Gird):
     # TODO: Note this grid is for testing usage, eg. 10 points.
     #       You can add points and test use other solvers
