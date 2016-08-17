@@ -172,7 +172,7 @@ class Model_1D_Stochastic_Finite_Step_Solver(Model_1D_Numerical_Solver):
                     A[cur_index][cur_index + 1] = u[dir_index] * hh
                     if spatial_point_index == mesh_point_num - 1:
                         # If the point is the last third point, then it does not have enough points to do the calculation, we need to deal with this using boundary condition
-                        B[cur_index] = next_mat.source() / 2.0 + u[dir_index] * dh * 1.0/th
+                        B[cur_index] = next_mat.source() / 2.0 + u[dir_index] * dh * 1.0/th * self.grid.right_boundary_condition()
                     else:
                         A[cur_index][cur_index + 2] = -u[dir_index] * dh * 1.0/th
                         B[cur_index] = next_mat.source() / 2.0
@@ -230,19 +230,19 @@ class Model_1D_Stochastic_Finite_Step_Solver(Model_1D_Numerical_Solver):
                 h_ = h[spatial_point_index]
                 _h = h[spatial_point_index - 1]
                 if spatial_point.isInterface():
-                    next_mat = self.mesh[spatial_point_index + 1].material()
-                    h__ = h[spatial_point_index + 1]
-                    th = h_ + h__
-                    hh = 1.0/h_ + 1.0/h__
-                    dh = h_/h__
-                    A[cur_index][cur_index] = -u[dir_index] * (1.0/h_ + 1.0/th) + next_mat.cross_section() - next_mat.scattering_section() * wt[dir_index] / 2.0
-                    A[cur_index][cur_index + 1] = u[dir_index] * hh
-                    if spatial_point_index == mesh_point_num - 1:
-                        # If the point is the last third point, then it does not have enough points to do the calculation, we need to deal with this using boundary condition
-                        B[cur_index] = next_mat.source() / 2.0 + u[dir_index] * dh * 1.0/th
+                    prev_mat = self.mesh[spatial_point_index - 1].material()
+                    __h = h[spatial_point_index - 2]
+                    th = _h + __h
+                    hh = 1/_h + 1/__h
+                    dh = _h/__h
+                    A[cur_index][cur_index] = u[dir_index] * (1.0/_h + 1.0/th) + prev_mat.cross_section() - prev_mat.scattering_section() * wt[dir_index] / 2.0
+                    A[cur_index][cur_index + 1] = -u[dir_index] * hh
+                    if spatial_point_index == 2:
+                        # If the point is the first third point, then it does not have enough points to do the calculation, we need to deal with this using boundary condition
+                        B[cur_index] = prev_mat.source() / 2.0 - u[dir_index] * dh * 1.0/th * self.grid.left_boundary_condition()
                     else:
-                        A[cur_index][cur_index + 2] = -u[dir_index] * dh * 1.0/th
-                        B[cur_index] = next_mat.source() / 2.0
+                        A[cur_index][cur_index + 2] = u[dir_index] * dh * 1.0/th
+                        B[cur_index] = prev_mat.source() / 2.0
                 else:
                     cur_mat = spatial_point.material()
                     th = h_ + _h
@@ -255,26 +255,26 @@ class Model_1D_Stochastic_Finite_Step_Solver(Model_1D_Numerical_Solver):
                     B[cur_index] = cur_mat.source() / 2.0
             # TODO: Var_naming confirm with Richard
             for tmp_pt_index in range(mesh_point_num):
-                for tmp_dir_index in range(self.discrete_direction_num / 2):
+                for tmp_dir_index in range(self.discrete_direction_num / 2, self.discrete_direction_num):
                     if tmp_dir_index == dir_index:
                         continue
-                    negative_dir_in_matrix_index = tmp_dir_index * mesh_point_num
+                    positive_dir_in_matrix_index = tmp_dir_index * mesh_point_num
                     matrix_entry_index_row = dir_submatrix_index + tmp_pt_index
-                    matrix_entry_index_col = dir_submatrix_index + negative_dir_in_matrix_index
-                    if self.mesh[tmp_pt_index].isInterface():
-                        A[matrix_entry_index_row][matrix_entry_index_col] = -self.mesh[tmp_pt_index+1].scattering_section() * wt[tmp_dir_index] / 2.0
-                    else:
+                    matrix_entry_index_col = dir_submatrix_index + positive_dir_in_matrix_index
+                    if self.mesh[tmp_pt_index + 1].isInterface():
                         A[matrix_entry_index_row][matrix_entry_index_col] = -self.mesh[tmp_pt_index].scattering_section() * wt[tmp_dir_index] / 2.0
+                    else:
+                        A[matrix_entry_index_row][matrix_entry_index_col] = -self.mesh[tmp_pt_index + 1].scattering_section() * wt[tmp_dir_index] / 2.0
                         
             for tmp_dir_index in range(self.discrete_direction_num / 2):
-                positive_dir_in_matrix_index = (self.discrete_direction_num / 2 + tmp_dir_index) * mesh_point_num
-                for tmp_pt_index in range(1, mesh_point_num):
+                negative_dir_in_matrix_index = tmp_dir_index * mesh_point_num
+                for tmp_pt_index in range(mesh_point_num - 1):
                     matrix_entry_index_row = dir_submatrix_index + tmp_pt_index
-                    matrix_entry_index_col = positive_dir_in_matrix_index + tmp_pt_index - 1
-                    if self.mesh[tmp_pt_index].isInterface():
-                        A[matrix_entry_index_row][matrix_entry_index_col] = -self.mesh[tmp_pt_index+1].scattering_section() * wt[self.discrete_direction_num / 2 + tmp_dir_index] / 2.0
-                    else:
+                    matrix_entry_index_col = negative_dir_in_matrix_index + tmp_pt_index + 1
+                    if self.mesh[tmp_pt_index + 1].isInterface():
                         A[matrix_entry_index_row][matrix_entry_index_col] = -self.mesh[tmp_pt_index].scattering_section() * wt[self.discrete_direction_num / 2 + tmp_dir_index] / 2.0
+                    else:
+                        A[matrix_entry_index_row][matrix_entry_index_col] = -self.mesh[tmp_pt_index + 1].scattering_section() * wt[self.discrete_direction_num / 2 + tmp_dir_index] / 2.0
                 B[dir_submatrix_index] += self.mesh[0].material().scattering_section() * wt[self.discrete_direction_num / 2 + tmp_dir_index] * self.grid.right_boundary_condition() / 2.0
         # Return the solution of this linear system, note the result is both undetermined and unchecked, need to put more tests for this solve procedure and refactorizing this since
         # it is such a big block lol
