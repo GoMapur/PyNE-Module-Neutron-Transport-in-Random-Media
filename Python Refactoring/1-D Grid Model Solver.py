@@ -11,10 +11,10 @@
 # my honor.
 # Mingjian Lu, July 2016
 
-# TODO: 1. one more BUG
-#       2. Why involve right cond while dealing with positive direction
+# TODO: 1. Debug
 
 import numpy as np
+import matplotlib.pyplot as plt
 
 class Spatial_Point():
     def __init__(self, place, material = None, isRequired = True):
@@ -40,8 +40,11 @@ class Solution_Point():
         self.index = index
         self.dir_val = {}
 
-    def add_dir_val(dir, val):
+    def add_dir_val(self, dir, val):
         self.dir_val[dir] = val
+
+    def spatial_point(self):
+        return self.cp
 
 
 class Model_1D_Numerical_Solver():
@@ -337,9 +340,10 @@ class Model_1D_Stochastic_Finite_Step_Solver(Model_1D_Numerical_Solver):
             scalar_flux = self.local_cache['scalar_flux']
         else:
             scalar_flux = self.solve_scalar_flux()
+        req_solution = self.local_cache['req_solution']
+        plt.plot([p.spatial_point().x() for p in req_solution], scalar_flux)
+        plt.show()
         
-        
-
     def add_point(self, x):
         for i in range(len(self.mesh)):
             if self.mesh[i] == x:
