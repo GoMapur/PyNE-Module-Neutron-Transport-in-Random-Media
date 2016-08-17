@@ -34,6 +34,16 @@ class Spatial_Point():
     def required():
         return self.rek
 
+class Solution_Point():
+    def __init__(self, corresponding_point, index):
+        self.cp = corresponding_point
+        self.index = index
+        self.dir_val = {}
+
+    def add_dir_val(dir, val):
+        self.dir_val[dir] = val
+
+
 class Model_1D_Numerical_Solver():
     cache = {}
 
@@ -48,7 +58,9 @@ class Model_1D_Numerical_Solver():
         self.discrete_direction_num = discrete_direction_num / 2 * 2
         self.grid = grid
         self.mesh = []
-        # TODO: Calculate GAUSS-LEGENDRE QUADRATURE
+        # Note: local cache is for solved solutions in case redundant calculation
+        self.local_cache = {}
+        # Calculate GAUSS-LEGENDRE QUADRATURE
         if self.discrete_direction_num in cache:
             self.guass_legendre = cache[discrete_direction_num]
         else:
@@ -114,16 +126,18 @@ class Model_1D_Stochastic_Finite_Step_Solver(Model_1D_Numerical_Solver):
         last_required_point = 0.0
         for interval in grid_model:
             while self.mesh[-1].x() < interval.right():
-                next_base_point = self.base_step_size + last_required_point
+                next_base_point = min(self.base_step_size + last_required_point, grid_model.len())
                 if next_base_point < interval.right():
                     # If adding a point does not cause exceeding the interface
                     self.mesh += [Spatial_Point(next_base_point, interval.material())]
                     last_required_point = next_base_point
                 elif next_base_point >= interval.right():
                     if interval.left() == self.mesh[-1].x():
-                        self.mesh += [Spatial_Point(interval.mid_point(), interval.material()), Spatial_Point(interval.right())]
+                        self.mesh += [Spatial_Point(interval.mid_point(), interval.material(), False), Spatial_Point(interval.right(), isRequired = next_base_point == interval.right())]
                     else：
-                        self.mesh += [Spatial_Point(interval.right())]
+                        self.mesh += [Spatial_Point(interval.right(), isRequired = next_base_point == interval.right())]
+                    if next_base_point == interval.right():
+                        last_required_point = next_base_point
 
         self.mesh_interval_len = [(self.mesh[i+1].x() - self.mesh[i].x()) for i in range(len(self.mesh) - 1)]
         self.n = len(self.mesh)
@@ -211,7 +225,6 @@ class Model_1D_Stochastic_Finite_Step_Solver(Model_1D_Numerical_Solver):
                 B[dir_submatrix_index] += self.mesh[0].material().scattering_section() * wt[self.discrete_direction_num / 2 + tmp_dir_index] * self.grid.right_boundary_condition() / 2.0
 
         # Second half, which is basically the same, thus plz refactorizing this part
-        # TODO: Why there is a plus instead of minus?
         for dir_index in range(self.discrete_direction_num / 2, self.discrete_direction_num):
             dir_submatrix_index = dir_index * mesh_point_num
             # Deal with edge case, in which left part does not exist
@@ -278,13 +291,54 @@ class Model_1D_Stochastic_Finite_Step_Solver(Model_1D_Numerical_Solver):
                 B[dir_submatrix_index] += self.mesh[0].material().scattering_section() * wt[self.discrete_direction_num / 2 + tmp_dir_index] * self.grid.right_boundary_condition() / 2.0
         # Return the solution of this linear system, note the result is both undetermined and unchecked, need to put more tests for this solve procedure and refactorizing this since
         # it is such a big block lol
-        return numpy.linalg.solve(A, B)
+        self.local_cache['complete_solution'] = numpy.linalg.solve(A, B)
+        return self.local_cache['complete_solution']
 
     def solve_required_points(self):
-        complete_solution = self.solve()
+        if 'complete_solution' in self.local_cache:
+            complete_solution = self.local_cache['complete_solution']
+        else:
+            complete_solution = self.solve()
         # Then we should throw away all additional points
-        
+        # Plus we need to take boundary condition into account
+        # Note Im using solution points class to make the complete required solution easily accessible
+        req_solution = [Solution_Point(self.mesh[p_index], p_index) for p_index in range(len(self.mesh)) if self.mesh[p_index].required()]
+        req_set = {}
+        for p_ind in range(len(req_solution)):
+            p = req_solution[p_ind]
+            req_set[p.index] = p_ind
+        for cur_dir in range(self.discrete_direction_num):
+            for cur_p in range(self.n - 1):
+                if cur < self.discrete_direction_num / 2:
+                    ax_p = cur_p
+                    req_solution[-1].add_dir_val(cur_dir, self.grid.right_boundary_condition())
+                else:
+                    ax_p = cur_p + 1
+                    req_solution[0].add_dir_val(cur_dir, self.grid.left_boundary_condition())
+                if ax_p in req_set:
+                    req_solution[req_set[ax_p]].add_dir_val(cur_dir, complete_solution[cur_dir * (self.n - 1) + cur_p])
+        self.local_cache['req_solution'] = req_solution
+        return req_solution
 
+    def solve_scalar_flux(self):
+        if 'req_solution' in self.local_cache:
+            req_solution = self.local_cache['req_solution']
+        else:
+            req_solution = self.solve_required_points()
+        scalar_flux = [0.0] * len(req_solution)
+        wt = self.gauss_weight()
+        for solution_p_index in range(len(req_solution)):
+            solution_p = req_solution[solution_p]
+            scalar_flux[solution_p_index] = sum([wt[dir_index] * solution_p.dir_val[dir_index] for dir_index in range(self.discrete_direction_num)])
+        return scalar_flux
+
+    def plot_scalar_flux(self):
+        if 'scalar_flux' in self.local_cache:
+            scalar_flux = self.local_cache['scalar_flux']
+        else:
+            scalar_flux = self.solve_scalar_flux()
+        
+        
 
     def add_point(self, x):
         for i in range(len(self.mesh)):
