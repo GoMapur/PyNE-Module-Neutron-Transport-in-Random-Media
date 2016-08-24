@@ -180,7 +180,7 @@ while(cond==0)
             maximum=T*max(Q1,Q2)+yo+y_;
             if abs(RL+TR)<=maximum
                 reflec=reflec+RL;
-                reflec2=reflec2+(RL)^2;
+                reflec2=reflec2+(RL)^2; 
                 transm=transm+TR;
                 transm2=transm2+(TR)^2;
                 for i=1:n+1
