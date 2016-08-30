@@ -209,7 +209,7 @@ class Stochastic_Gird(Grid):
         for interval in self.intervals:
             yield interval
 
-class Test_Grid(Stochastic_Gird):
+class Test_Stochastic_Grid(Stochastic_Gird):
     # TODO: Note this grid is for testing usage, eg. 10 points.
     #       You can add points and test use other solvers
     def __init__(self, total_len, boundary_cond, materials, interval_list):
@@ -222,7 +222,20 @@ class Test_Grid(Stochastic_Gird):
             self.interfaces.add(interval.right)
             self.interfaceToInterval[interval.right] =  [lastInterval.material(), interval.material()]
             lastInterval = interval
-
+            
+class Periodic_Grid(Grid):
+    def __init__(self, total_len, point_num, start_point_index = 0, boundary_cond, materials):
+        # Note: materials should be given as the same order as the periodicity
+        #       start_point_index starts at 0
+        Grid.__init__(self, total_len = total_len, boundary_cond = boundary_cond, materials = materials)
+        self.step_size = total_len / point_num
+        self.point_num - point_num
+        self.start_point_index = start_point_index
+        assert(len(self.materials) > 1, "Stochastic case should have at least two materials.")
+        cur_point_index = 0
+        
+        
+        
 class Utility():
     def cumulative_possibility(distribution, distribution_sum, corresponding_choices):
         assert(len(distribution) == len(corresponding_choices), "List lenghth unmatch!")
