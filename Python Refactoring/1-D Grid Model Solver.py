@@ -50,7 +50,7 @@ class Solution_Point():
 class Model_1D_Numerical_Solver():
     cache = {}
 
-    def __init__(self, grid, gauss_discrete_direction_num = 2, total_point_num = -1, discretization_stepsize = -1,):
+    def __init__(self, grid, gauss_discrete_direction_num = 2, total_point_num = -1, discretization_stepsize = -1):
         """ NOTE: please clean up the discrete_direction_num before call this
             super constructor. Eg, for Gauss Legendre Quadrature, plz ensure it
             is even number.
@@ -169,8 +169,8 @@ class Model_1D_Stochastic_Finite_Step_Solver(Model_1D_Numerical_Solver):
             A[dir_submatrix_index][dir_submatrix_index] = -u[dir_index] / h[0] + self.mesh[0].material().cross_section() - self.mesh[0].material().scattering_section() * wt[dir_index] / 2.0
             A[dir_submatrix_index][dir_submatrix_index+1] = u[dir_index] / h[0]
             B[dir_submatrix_index] = self.mesh[0].material().source() / 2.0
-            
-            A[dir_submatrix_index + self.n - 1][dir_submatrix_index + self.n - 2] = -u[dir_index] * h[-1]/h[-2] * (h[-1] + h[-2]) 
+
+            A[dir_submatrix_index + self.n - 1][dir_submatrix_index + self.n - 2] = -u[dir_index] * h[-1]/h[-2] * (h[-1] + h[-2])
             A[dir_submatrix_index + self.n - 1][dir_submatrix_index + self.n - 1]= u[dir_index] * (h[-1] - h[-2])/(h[-1]*h[-2]) + self.mesh[-1].material().cross_section() - self.mesh[-1].material().scattering_section() * wt[dir_index] / 2.0
             B[dir_submatrix_index + self.n - 1] = self.mesh[-1].material().source() / 2.0 - u[dir_index] * h[-2]/h[-1] * 1.0 / (h[-1]+h[-2]) * self.grid.right_boundary_condition()
             # The first and last points are already taken care of
@@ -215,7 +215,7 @@ class Model_1D_Stochastic_Finite_Step_Solver(Model_1D_Numerical_Solver):
                         A[matrix_entry_index_row][matrix_entry_index_col] = -self.mesh[tmp_pt_index+1].scattering_section() * wt[tmp_dir_index] / 2.0
                     else:
                         A[matrix_entry_index_row][matrix_entry_index_col] = -self.mesh[tmp_pt_index].scattering_section() * wt[tmp_dir_index] / 2.0
-                        
+
             for tmp_dir_index in range(self.discrete_direction_num / 2):
                 positive_dir_in_matrix_index = (self.discrete_direction_num / 2 + tmp_dir_index) * mesh_point_num
                 for tmp_pt_index in range(1, mesh_point_num):
@@ -235,7 +235,7 @@ class Model_1D_Stochastic_Finite_Step_Solver(Model_1D_Numerical_Solver):
             A[dir_submatrix_index][dir_submatrix_index] = u[dir_index] * (h[1] - h[0])/(h[0] * h[0]) + self.mesh[0].material().cross_section() - self.mesh[0].material().scattering_section() * wt[dir_index] / 2.0
             A[dir_submatrix_index][dir_submatrix_index+1] = u[dir_index] * h[0]/h[1] * (h[0]+h[1])
             B[dir_submatrix_index] = self.mesh[0].material().source() / 2.0 + u[dir_index] * h[1]/h[0] * 1.0 / (h[0]+h[1]) * self.grid.left_boundary_condition()
-            
+
             A[dir_submatrix_index + self.n - 1][dir_submatrix_index + self.n - 2] = u[dir_index] / h[-1]
             A[dir_submatrix_index + self.n - 1][dir_submatrix_index + self.n - 1]= -u[dir_index] / h[-1] + self.mesh[-1].material().cross_section() - self.mesh[-1].material().scattering_section() * wt[dir_index] / 2.0
             B[dir_submatrix_index + self.n - 1] = self.mesh[-1].material().source() / 2.0
@@ -281,7 +281,7 @@ class Model_1D_Stochastic_Finite_Step_Solver(Model_1D_Numerical_Solver):
                         A[matrix_entry_index_row][matrix_entry_index_col] = -self.mesh[tmp_pt_index].scattering_section() * wt[tmp_dir_index] / 2.0
                     else:
                         A[matrix_entry_index_row][matrix_entry_index_col] = -self.mesh[tmp_pt_index + 1].scattering_section() * wt[tmp_dir_index] / 2.0
-                        
+
             for tmp_dir_index in range(self.discrete_direction_num / 2):
                 negative_dir_in_matrix_index = tmp_dir_index * mesh_point_num
                 for tmp_pt_index in range(mesh_point_num - 1):
@@ -343,7 +343,7 @@ class Model_1D_Stochastic_Finite_Step_Solver(Model_1D_Numerical_Solver):
         req_solution = self.local_cache['req_solution']
         plt.plot([p.spatial_point().x() for p in req_solution], scalar_flux)
         plt.show()
-        
+
     def add_point(self, x):
         for i in range(len(self.mesh)):
             if self.mesh[i] == x:
@@ -351,3 +351,27 @@ class Model_1D_Stochastic_Finite_Step_Solver(Model_1D_Numerical_Solver):
             if self.mesh[i] < x and x < self.mesh[i+1]:
                 self.mesh.insert(i+1, x)
                 return
+
+class Model_1D_Periodic_Solver(Model_1D_Numerical_Solver):
+        def __init__(self, grid_model, point_num, gauss_discrete_direction_num = 2):
+            for mat in grid_model.material_list():
+                assert(int(mat.thickness() / self.step_size) == mat.thickness() / self.step_size, "Interfaces must be included in discretization.")
+            Model_1D_Numerical_Solver.__init__(self, grid = grid_model, gauss_discrete_direction_num = (discrete_direction_num / 2) * 2, total_point_num = point_num, discretization_stepsize = total_len / point_num)
+            # Start constructing the mesh, note we will add additional points on
+            # interface and inside intercal if the basic points number and step
+            # size is not enought to cover all the intervals
+            # TODO: BUG may exist, need to debug， Is n * step_size guaranteed to
+            #       be the same as total length??
+            self.mesh += [Spatial_Point(0.0, None)]
+            last_len = 0.0
+            for i in range(1, point_num + 1):
+                cur_len = i * self.step_size
+                cur_mat = None
+                for mat in materials:
+                    if cur_len <= mat.thickness():
+                        cur_mat = mat
+                    else:
+                        cur_len -= mat.thickness()
+                cur_len = i * self.step_size
+                self.intervals += [Interval(cur_mat, last_len, cur_len)]
+                last_len = cur_len

@@ -42,4 +42,3 @@ class Model_1D_Stochastic_Finite_Step_Benchmark(Model_1D_Benchmark):
             solution = self.benchmark_once()
 
 
-class Model_1D_

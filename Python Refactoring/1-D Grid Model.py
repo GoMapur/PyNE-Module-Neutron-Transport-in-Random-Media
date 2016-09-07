@@ -22,16 +22,16 @@ class Model_Material():
             If that's the case, plz either place a lock on index or use material
             name to differentiate them.
         """
-        self.thickness = thickness
-        self.cross_section = cross_section
-        self.scattering_ratio = scattering_ratio
-        self.source = homogeneous_isotropic_source
+        self.thickness = float(thickness)
+        self.cross_section = float(cross_section)
+        self.scattering_ratio = float(scattering_ratio)
+        self.source = float(homogeneous_isotropic_source)
         self.index = material_index_counter
         if name is None:
             self.name = "__inner_mat_" + str(material_index_counter)
-        material_index_counter += 1
+            material_index_counter += 1
 
-    def thinkness(self):
+    def thickness(self):
         return self.thickness
 
     def cross_section(self):
@@ -52,17 +52,14 @@ class Model_Material():
     def name(self):
         return self.name
 
-    def index(self):
-        return self.index
-
 class Interval():
     """ This class is for material intervals, note the difference between this
         and the actual grid, which is the point where we go for our calculation.
     """
     def __init__(self, material, left_point, right_point):
         self.material = material
-        self.left_point = left_point
-        self.right_point = right_point
+        self.left_point = float(left_point)
+        self.right_point = float(right_point)
 
     def material_index(self):
         return self.material.index()
@@ -105,10 +102,10 @@ class Grid():
             so it is needed to calculate from grid to obtain actual used step
             size.
         """
-        self.len = total_len
-        self.bc_L = boundary_cond[0]
-        self.bc_R = boundary_cond[1]
-        self.materials = sorted(materials, lambda x: x.index())
+        self.len = float(total_len)
+        self.bc_L = float(boundary_cond[0])
+        self.bc_R = float(boundary_cond[1])
+        self.materials = materials
         self.intervals = []
 
     def len(self):
@@ -126,7 +123,7 @@ class Grid():
     def right_boundary_condition(self):
         return self.bc_R
 
-    def masterial_list(self):
+    def material_list(self):
         return self.materials
 
     def material_num(self):
@@ -222,20 +219,33 @@ class Test_Stochastic_Grid(Stochastic_Gird):
             self.interfaces.add(interval.right)
             self.interfaceToInterval[interval.right] =  [lastInterval.material(), interval.material()]
             lastInterval = interval
-            
+
 class Periodic_Grid(Grid):
-    def __init__(self, total_len, point_num, start_point_index = 0, boundary_cond, materials):
+    def __init__(self, total_len, boundary_cond, materials):
         # Note: materials should be given as the same order as the periodicity
-        #       start_point_index starts at 0
         Grid.__init__(self, total_len = total_len, boundary_cond = boundary_cond, materials = materials)
-        self.step_size = total_len / point_num
-        self.point_num - point_num
-        self.start_point_index = start_point_index
-        assert(len(self.materials) > 1, "Stochastic case should have at least two materials.")
-        cur_point_index = 0
-        
-        
-        
+        assert(len(self.materials) > 1, "Periodic case should have at least two materials.")
+        mat_index = 0
+        last_len = 0.0
+        cur_len = 0.0
+        while true:
+            cur_mat = materials[mat_index]
+            cur_len = max(cur_mat.thickness() + last_len, total_len)
+            self.intervals += [Interval(cur_mat, last_len, cur_len)]
+            last_len = cur_len
+            mat_index = mat_index + 1 if (mat_index + 1) != len(materials) else 0
+            if last_len == total_len:
+                break
+
+    def intervalsAt(self, place):
+        raise NotImplementedError
+
+    def isInterface(self, place):
+        raise NotImplementedError
+
+class 
+
+
 class Utility():
     def cumulative_possibility(distribution, distribution_sum, corresponding_choices):
         assert(len(distribution) == len(corresponding_choices), "List lenghth unmatch!")
