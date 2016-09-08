@@ -223,28 +223,29 @@ class Test_Stochastic_Grid(Stochastic_Gird):
 class Periodic_Grid(Grid):
     def __init__(self, total_len, boundary_cond, materials):
         # Note: materials should be given as the same order as the periodicity
+        # Currently it only suppoets two materials
         Grid.__init__(self, total_len = total_len, boundary_cond = boundary_cond, materials = materials)
-        assert(len(self.materials) > 1, "Periodic case should have at least two materials.")
-        mat_index = 0
-        last_len = 0.0
-        cur_len = 0.0
-        while true:
-            cur_mat = materials[mat_index]
-            cur_len = max(cur_mat.thickness() + last_len, total_len)
-            self.intervals += [Interval(cur_mat, last_len, cur_len)]
-            last_len = cur_len
-            mat_index = mat_index + 1 if (mat_index + 1) != len(materials) else 0
-            if last_len == total_len:
-                break
+        assert(len(self.materials) == 2, "Periodic case should have two materials.")
+        # Since I am using code of direct translation, the codes below wont have any effect,
+        # but they will be used when refactoring
+        # mat_index = 0
+        # last_len = 0.0
+        # cur_len = 0.0
+        # while true:
+        #     cur_mat = materials[mat_index]
+        #     cur_len = max(cur_mat.thickness() + last_len, total_len)
+        #     self.intervals += [Interval(cur_mat, last_len, cur_len)]
+        #     last_len = cur_len
+        #     mat_index = mat_index + 1 if (mat_index + 1) != len(materials) else 0
+        #     if last_len == total_len:
+        #         break
 
-    def intervalsAt(self, place):
-        raise NotImplementedError
-
-    def isInterface(self, place):
-        raise NotImplementedError
-
-class 
-
+class Homogeneous_Grid(Grid):
+    def __init__(self, total_len, boundary_cond, materials):
+        # Note: materials should be given as the same order as the periodicity
+        # Currently it only suppoets two materials
+        Grid.__init__(self, total_len = total_len, boundary_cond = boundary_cond, materials = materials)
+        assert(len(self.materials) == 2, "Periodic case should have two materials.")
 
 class Utility():
     def cumulative_possibility(distribution, distribution_sum, corresponding_choices):

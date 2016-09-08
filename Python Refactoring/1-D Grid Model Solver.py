@@ -353,25 +353,233 @@ class Model_1D_Stochastic_Finite_Step_Solver(Model_1D_Numerical_Solver):
                 return
 
 class Model_1D_Periodic_Solver(Model_1D_Numerical_Solver):
-        def __init__(self, grid_model, point_num, gauss_discrete_direction_num = 2):
+        def __init__(self, grid_model, point_num, gauss_discrete_direction_num = 2, start_index):
             for mat in grid_model.material_list():
                 assert(int(mat.thickness() / self.step_size) == mat.thickness() / self.step_size, "Interfaces must be included in discretization.")
             Model_1D_Numerical_Solver.__init__(self, grid = grid_model, gauss_discrete_direction_num = (discrete_direction_num / 2) * 2, total_point_num = point_num, discretization_stepsize = total_len / point_num)
-            # Start constructing the mesh, note we will add additional points on
-            # interface and inside intercal if the basic points number and step
-            # size is not enought to cover all the intervals
-            # TODO: BUG may exist, need to debug， Is n * step_size guaranteed to
-            #       be the same as total length??
-            self.mesh += [Spatial_Point(0.0, None)]
-            last_len = 0.0
-            for i in range(1, point_num + 1):
-                cur_len = i * self.step_size
-                cur_mat = None
-                for mat in materials:
-                    if cur_len <= mat.thickness():
-                        cur_mat = mat
-                    else:
-                        cur_len -= mat.thickness()
-                cur_len = i * self.step_size
-                self.intervals += [Interval(cur_mat, last_len, cur_len)]
-                last_len = cur_len
+            self.start_index = start_index
+
+        def solve(self):
+            mat1, mat2 = self.grid.materials[0], self.grid.materials[1]
+            T = self.grid.len
+            m1,m2 = mat1.thickness(), mat2.thickness()
+            n,N = self.n, self.discrete_direction_num
+            Es1,Es2 = mat1.scattering_section(), mat2.scattering_section()
+            Et1,Et2 = mat1.cross_section(), mat2.cross_section()
+            yo,y_ = self.grid.left_boundary_condition(), self.grid.right_boundary_condition()
+            Q1,Q2 = mat1.source(), mat2.source()
+            u,wt = self.gauss_u(), self.gauss_weight()
+            a = self.start_index
+        	interval = T / n
+        	m12 = [0, m1, m2] #which material, so index of this matters
+        	mm = 0
+        	s = 0
+        	i = 0
+        	x = None
+        	if a > 1:
+        		if a < m2/interval + 2:
+        			i += 1
+        			x1 = (a-1) * interval
+        			s += x1
+        			tmp = [] #can shorten to declare immediately but verbose for readability
+        			tmp.append(s)
+        			tmp.append(2)
+        			x = np.asarray([tmp]) #x is offset to account for material
+        		else:
+        			i += 1
+        			x1 = (a - m2/interval - 1) * interval
+        			s += x1;
+        			tmp = []
+        			tmp.append(s)
+        			tmp.append((mm % 2) + 1)
+        			x = np.asarray([tmp])
+        			mm += 1
+        	while s < T:
+        		i += 1
+        		x1 = m12[(mm % 2) + 1] #whats the point of this? isnt this either 1 or 2?
+        		s = s + x1
+        		tmp = []
+        		if s <= T:
+        			tmp.append(s)
+        		else:
+        			tmp.append(T) #check here
+        		tmp.append((mm % 2) + 1)
+        		if x == None:
+        			x = np.asarray([tmp])
+        		else: #check logic here
+        			x = np.vstack((x, np.asarray([tmp])))
+        		mm += 1
+        	H = T / n
+        	n1 = 1
+        	i = 1
+        	j = 1
+        	extra = [0] * n
+        	t1 = i * H
+
+        	save_csv(x, 'xsn')
+
+
+        	tmp = [0, int(x[j-1 , 2-1])]
+        	L = np.asarray([tmp])
+        	L1 = []
+        	L1.append(tmp)
+        	h = [] #is h just a list?
+        	if t1 == x[j-1, 1-1]:
+        		extra[i-1] = 1
+        		h.append(x[j-1, 1-1] / 2)
+        		#n1+1 case
+        		tmp = [h[n1-1], int(x[j-1, 2-1])]
+        		L1.append(tmp)
+        		tmp = np.asarray([tmp])
+        		L = np.vstack((L, tmp))
+        		h.append(h[n1-1])
+        		#n1+2 case
+        		tmp = np.asarray([x[j-1,1-1], 3]) #are the values of x guaranteed to be ints???
+        		L1.append([x[j-1,1-1], 3])
+        		L = np.vstack((L, tmp))
+        		n1 += 2
+        		i += 1
+        		t1 = i * H
+        	else:
+        		while t1 <= x[j-1,1-1]:
+        			h.append(H) #h(n1) = H
+        			tmp = [i * H]
+        			if tmp[0] == x[j-1,1-1]:
+        				tmp.append(3)
+        			else:
+        				tmp.append(int(x[j-1,2-1]))
+        			L1.append(tmp)
+        			L = np.vstack((L, np.asarray([tmp])))
+        			n1 += 1
+        			i += 1
+        			t1 = i * H
+        	j = 2
+        	if x[1-1,1-1] != T:
+        		while i <= n:
+        			while t1 <= x[j-1,1-1]:
+        				tmp = [i * H]
+        				if tmp[0] == x[j-1,1-1]:
+        					tmp.append(3)
+        				else:
+        					tmp.append(int(x[j-1,2-1]))
+        				L1.append(tmp)
+        				L = np.vstack((L, np.asarray([tmp])))
+        				h.append(L1[n1+1-1][1-1] - L1[n1-1][1-1])
+        				n1 += 1 #n1 isnt really necessary to keep the index
+        				i += 1
+        				t1 = i * H
+        			j += 1
+        			if L1[n1-1][1-1] == T and L1[n1-1][2-1] == 3 and L1[n1-1-1][2-1] == 3:
+        				i -= 1
+        				extra[i-1] += 1
+        				tmp = []
+        				tmp.append((x[j-1-1, 1-1] + x[j-2-1, 1-1])/2)
+        				tmp.append(x[j-1-1, 2-1])
+        				tmp[1] = int(tmp[1])
+        				L = np.vstack((L, np.asarray([tmp])))
+        				L1[n1-1] = tmp
+        				h[n1-1-1] = L1[n1-1][1-1] - L1[n1-1-1][1-1] #still within range
+        				n1 += 1
+        				tmp = [x[j-1-1, 1-1], 3]
+        				tmp[1] = int(tmp[1])
+        				L1.append(tmp)
+        				L = np.vstack((L, np.asarray([tmp])))
+        				h.append(L1[n1-1][1-1] - L1[n1-1-1][1-1]) #adds to h[] (Matlab) not indexing
+        				i += 1
+        	save_csv(L1, 'L')
+        	n1 -= 1
+        	L = L1
+        	save_csv(np.asarray(h), 'h')
+        	#L tells you which material, L's index doesnt matter, x's index doesnt matter, Es, Et, Q does
+        	A = np.zeros((N*n1,N*n1))
+        	B = np.zeros((N*n1,1))
+        	Et12 = [0, Et1, Et2]
+        	Es12 = [0, Es1, Es2]
+        	Q12 = [0, Q1, Q2]
+
+        	#% Diagonal Block of matrix up to N/2.................................
+        	for t in range(1, N/2 + 1):
+        		s = (t-1) * n1
+        		A[s+1-1,s+1-1] = -u[t-1] * (1 / h[1-1]) + Et12[L[1-1][2-1]] - Es12[L[1-1][2-1]] * wt[t-1]/2
+        		A[s+1-1,s+2-1] = u[t-1] * (1 / h[1-1])
+        		B[s+1-1, 0] = Q12[L[1-1][2-1]]/2
+        		for i in range(2, n1-1+1):
+        			if L[i-1][2-1] == 3:
+        				if i == n1 - 1:
+        					A[s+i-1,s+i-1] = -u[t-1] * (1 / h[i-1] + 1 / (h[i-1] + h[i+1-1])) + Et12[L[i+1-1][2-1]] - Es12[L[i+1-1][2-1]] * wt[t-1]/2
+        					A[s+i-1,s+i+1-1] = u[t-1] * (1/h[i-1] + 1/h[i+1-1])
+        					B[s+i-1,0] = u[t-1] * y_ * (h[i-1] / (h[i+1-1] * (h[i-1] + h[i+1-1]))) + Q12[L[i+1-1][2-1]]/2
+        				else:
+        					A[s+i-1,s+i-1] = -u[t-1] * (1/h[i-1] + 1/(h[i-1] + h[i+1-1] )) + Et12[L[i+1-1][2-1]] - Es12[L[i+1-1][2-1]] * wt[t-1]/2
+        					A[s+i-1,s+i+1-1] = u[t-1] * (1/h[i-1] + 1/h[i+1-1])
+        					A[s+i-1,s+i+2-1] = -u[t-1] * (h[i-1]/(h[i+1-1] * (h[i-1] + h[i+1-1])))
+        					B[s+i-1, 0] = Q12[L[i+1-1][2-1]]/2
+        			else:
+        				A[s+i-1,s+i-1-1] = -u[t-1] * h[i-1]/(h[i-1-1]*(h[i-1-1]+h[i-1]))
+        				A[s+i-1,s+i-1] = u[t-1] * (h[i-1] - h[i-1-1])/(h[i-1] * h[i-1-1]) + Et12[L[i-1][2-1]] - Es12[L[i-1][2-1]] * wt[t-1]/2
+        				A[s+i-1,s+i+1-1] = u[t-1] * h[i-1-1] / (h[i-1] * (h[i-1-1] + h[i-1]))
+        				B[s+i-1,0] = Q12[L[i-1][2-1]] /2
+        		A[s+n1-1,s+n1-1-1] = -u[t-1] * h[n1-1] / (h[n1-1-1] * (h[n1-1-1] + h[n1-1]))
+        		A[s+n1-1,s+n1-1] = u[t-1] * (h[n1-1] - h[n1-1-1]) / (h[n1-1] * h[n1-1-1]) + Et12[L[n1-1][2-1]] - Es12[L[n1-1][2-1]] * wt[t-1]/2
+        		B[s+n1-1,0] = -u[t-1] * y_ * h[n1-1-1] / (h[n1-1] * (h[n1-1-1] + h[n1-1] )) + Q12[L[n1-1][2-1]]/2
+
+
+        		#% Blocks from N/2 to N........................................
+        		a = 0
+        		for p in range(1, N/2 + 1):
+        			S = (N/2 + p - 1) * n1
+        			for i in range(2, n1+1):
+        				if L[i-1][2-1] == 3:
+        					A[s+i-1,S+i-1-1] = -Es12[L[i+1-1][2-1]] * wt[N/2+p-1]/2
+        				else:
+        					A[s+i-1,S+i-1-1] = -Es12[L[i-1][2-1]] * wt[N/2+p -1]/2
+        			a += (Es12[L[1-1][2-1]] * wt[N/2+p-1] * yo/2)
+        		B[s+1-1,0] = B[s+1-1,0] + a
+
+        	#% Diagonal Block of matrix from N/2+1 to N.........................
+        	for t in range(N/2+1, N+1):
+        		s = (t-1) * n1
+        		A[s+1-1,s+1-1] = u[t-1] * (h[2-1] - h[1-1]) / (h[2-1] * h[1-1]) + Et12[L[1-1][2-1]] - Es12[L[1-1][2-1]] * wt[t-1]/2
+        		A[s+1-1,s+1+1-1] = u[t-1] * h[1-1] / (h[2-1] * (h[1-1] + h[2-1]))
+        		B[s+1-1,0] = u[t-1] * yo * h[2-1] / (h[1-1] * (h[1-1] + h[2-1])) + Q12[L[1-1][2-1]] / 2
+        		for i in range(2, n1-1+1):
+        			if L[i+1-1][2-1] == 3:
+        				if i == 2:
+        					A[s+i-1,s+i-1] = u[t-1] * (1/h[i-1] + 1/(h[i-1] + h[i-1-1])) + Et12[L[i-1][2-1]] - Es12[L[i-1][2-1]] * wt[t-1]/2
+        					A[s+i-1,s+i-1-1] = -u[t-1] * (1/h[i-1] + 1/h[i-1-1])
+        					B[s+i-1,0] = -u[t-1] * yo * (h[i-1]/(h[i-1-1] * (h[i-1] + h[i-1-1]))) + Q12[L[i-1][2-1]]/2
+        				else:
+        					A[s+i-1,s+i-1] = u[t-1] * (1/h[i-1] + 1/(h[i-1] + h[i-1-1])) + Et12[L[i-1][2-1]] - Es12[L[i-1][2-1]] * wt[t-1]/2
+        					A[s+i-1,s+i-1-1] = -u[t-1] * (1/h[i-1] + 1/h[i-1-1])
+        					A[s+i-1,s+i-2-1] = u[t-1] * (h[i-1] / (h[i-1-1] * (h[i-1] + h[i-1-1])))
+        					B[s+i-1,0] = Q12[L[i-1][2-1]]/2
+        			else:
+        				A[s+i-1,s+i-1-1] = -u[t-1] * h[i+1-1] / (h[i-1] * (h[i-1] + h[i+1-1]))
+        				A[s+i-1,s+i-1] = u[t-1] * (h[i+1-1] - h[i-1]) / (h[i+1-1] * h[i-1]) + Et12[L[i+1-1][2-1]] - Es12[L[i+1-1][2-1]] * wt[t-1]/2
+        				A[s+i-1,s+i+1-1] = u[t-1] * h[i-1] / (h[i+1-1] * (h[i-1] + h[i+1-1]))
+        				B[s+i-1,0] = Q12[L[i+1-1][2-1]]/2
+        		A[s+n1-1,s+n1-1] = u[t-1] * (1/h[n1-1]) + Et12[L[n1-1][2-1]] - Es12[L[n1-1][2-1]] * wt[t-1]/2
+        		A[s+n1-1,s+n1-1-1] = -u[t-1] * (1/h[n1-1])
+        		B[s+n1-1,0] = Q12[L[n1-1][2-1]]/2
+
+
+        		#% Blocks from 1 to N/2........................................
+        		a = 0
+        		for p in range(1, N/2+1):
+        			S = (p-1) * n1
+        			for i in range(1,n1-1+1):
+        				if L[i+1-1][2-1] == 3:
+        					A[s+i-1,S+i+1-1] = -Es12[L[i-1][2-1]] * wt[p-1]/2
+        				else:
+        					A[s+i-1,S+i+1-1] = -Es12[L[i+1-1][2-1]] * wt[p-1]/2
+        			a += (Es12[L[n1-1][2-1]] * wt[p-1] * y_/2)
+
+        		B[s+n1-1, 0] += a
+        	Z = np.linalg.solve(A, B)
+        	return Z, n1, B, L, A, extra
+
+class Model_1D_Homogeneous_Solver(Model_1D_Numerical_Solver):
+        def __init__(self, grid_model, point_num, gauss_discrete_direction_num = 2, start_index):
+            for mat in grid_model.material_list():
+                assert(int(mat.thickness() / self.step_size) == mat.thickness() / self.step_size, "Interfaces must be included in discretization.")
+            Model_1D_Numerical_Solver.__init__(self, grid = grid_model, gauss_discrete_direction_num = (discrete_direction_num / 2) * 2, total_point_num = point_num, discretization_stepsize = total_len / point_num)
