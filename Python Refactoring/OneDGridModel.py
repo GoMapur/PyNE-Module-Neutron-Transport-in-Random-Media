@@ -12,16 +12,18 @@
 # Mingjian Lu, July 2016
 
 import numpy as np
+from itertools import count
 
 class Model_Material():
-    material_index_counter = 0
+    _ids = count(0)
 
-    def __init__(self, name = None, thickness, cross_section, scattering_ratio, homogeneous_isotropic_source):
+    def __init__(self, thickness, cross_section, scattering_ratio, homogeneous_isotropic_source, name = None):
         """ Note if you are going to make this program parallel, then there
             might be conflicts with indexing material automatically correctly.
             If that's the case, plz either place a lock on index or use material
             name to differentiate them.
         """
+        material_index_counter = next(self._ids)
         self.thickness = float(thickness)
         self.cross_section = float(cross_section)
         self.scattering_ratio = float(scattering_ratio)
@@ -29,7 +31,6 @@ class Model_Material():
         self.index = material_index_counter
         if name is None:
             self.name = "__inner_mat_" + str(material_index_counter)
-            material_index_counter += 1
 
     def thickness(self):
         return self.thickness
@@ -147,13 +148,13 @@ class Stochastic_Gird(Grid):
         self.interfaces = set([0.0])
         self.interfaceToInterval = {}
         assert(len(self.materials) > 1, "Stochastic case should have at least two materials.")
-        thinkness_distribution = [mat.thickness() for mat in self.materials]
+        thinkness_distribution = [mat.thickness for mat in self.materials]
         # Generate the intervals
         cur_left = 0.0
         cur_total_len = 0.0
         while cur_total_len < self.len:
             cur_mat = Utility.cumulative_possibility(thinkness_distribution, self.materials)
-            cur_total_len += random.expovariate(1 / cur_mat.thickness())
+            cur_total_len += random.expovariate(1 / cur_mat.thickness)
             cur_total_len = min(self.len, cur_total_len)
             self.interfaces.add(cur_total_len)
             self.intervals += [Interval(cur_mat, cur_left, cur_total_len)]
