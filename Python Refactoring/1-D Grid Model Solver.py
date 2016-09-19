@@ -583,3 +583,6 @@ class Model_1D_Homogeneous_Solver(Model_1D_Numerical_Solver):
             for mat in grid_model.material_list():
                 assert(int(mat.thickness() / self.step_size) == mat.thickness() / self.step_size, "Interfaces must be included in discretization.")
             Model_1D_Numerical_Solver.__init__(self, grid = grid_model, gauss_discrete_direction_num = (discrete_direction_num / 2) * 2, total_point_num = point_num, discretization_stepsize = total_len / point_num)
+
+        def solve(self):
+            
