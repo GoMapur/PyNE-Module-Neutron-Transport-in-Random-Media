@@ -16,13 +16,13 @@
 import numpy as np
 
 class Spatial_Point():
-    def __init__(self, place, material = None, isRequired = True):
-        self.mmaterial = None
+    def __init__(self, place, material, isRequired = True):
+        self.mmaterial = material
         self.xx = place
         self.rek = isRequired
 
     def isInterface(self):
-        return self.material is None
+        return len(self.mmaterial) == 2
 
     def material(self):
         return self.mmaterial
@@ -30,7 +30,7 @@ class Spatial_Point():
     def x(self):
         return self.xx
 
-    def required():
+    def required(self):
         return self.rek
 
 class Solution_Point():
@@ -123,23 +123,31 @@ class Model_1D_Stochastic_Finite_Step_Solver(Model_1D_Numerical_Solver):
         # size is not enought to cover all the intervals
         # TODO: BUG may exist, need to debug, Is n * step_size guaranteed to
         #       be the same as total length?
-        self.mesh += [Spatial_Point(0.0, None)]
+        self.mesh += [Spatial_Point(0.0, [None, grid_model.intervalsAt(0.0)[0].material()])]
         last_required_point = 0.0
-        for interval in grid_model:
+        grid_iter = [interval for interval in grid_model]
+        for i in range(len(grid_iter)):
+            interval = grid_iter[i]
+            if i != len(grid_iter) - 1:
+                next_interval = grid_iter[i + 1]
             while self.mesh[-1].x() < interval.right():
                 next_base_point = min(self.base_step_size + last_required_point, grid_model.len())
+                if next_base_point == grid_model.len():
+                    self.mesh += [Spatial_Point(next_base_point, [interval.material(), None])]
+                    break
                 if next_base_point < interval.right():
                     # If adding a point does not cause exceeding the interface
-                    self.mesh += [Spatial_Point(next_base_point, interval.material())]
+                    self.mesh += [Spatial_Point(next_base_point, [interval.material()])]
                     last_required_point = next_base_point
-                elif next_base_point >= interval.right():
+                elif next_base_point > interval.right():
                     if interval.left() == self.mesh[-1].x():
-                        self.mesh += [Spatial_Point(interval.mid_point(), interval.material(), False), Spatial_Point(interval.right(), isRequired = next_base_point == interval.right())]
+                        self.mesh += [Spatial_Point(interval.mid_point(), [interval.material()], isRequired = False), Spatial_Point(interval.right(), [interval.material(), next_interval.material()], isRequired = False)]
                     else:
-                        self.mesh += [Spatial_Point(interval.right(), isRequired = next_base_point == interval.right())]
-                    if next_base_point == interval.right():
-                        last_required_point = next_base_point
-                # print(str(self.mesh[-1].x()) + "/" + str(interval.right()))
+                        self.mesh += [Spatial_Point(interval.right(), [interval.material(), next_interval.material()], isRequired = False)]
+                elif next_base_point == interval.right():
+                    self.mesh += [Spatial_Point(interval.right()), [interval.material(), next_interval.material()]]
+                    last_required_point = next_base_point
+                # print(str(self.mesh[-1].required()) + " " + str(self.mesh[-1].x()) + " / " + str(interval.right()))
 
         self.mesh_interval_len = [(self.mesh[i+1].x() - self.mesh[i].x()) for i in range(len(self.mesh) - 1)]
         self.n = len(self.mesh)
@@ -152,7 +160,7 @@ class Model_1D_Stochastic_Finite_Step_Solver(Model_1D_Numerical_Solver):
             #       Docs and param explainations
         """
         mesh_point_num = len(self.mesh) - 1
-        matrix_size = discrete_direction_num * mesh_point_numb
+        matrix_size = self.discrete_direction_num * mesh_point_num
         A = [[0.0 for _ in range(matrix_size)] for __ in range(matrix_size)]
         B = [0.0 for _ in range(matrix_size)]
         # Begin constructing the matrix, start by iterating through directions

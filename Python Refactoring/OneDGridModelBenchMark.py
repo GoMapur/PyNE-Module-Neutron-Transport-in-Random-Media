@@ -23,7 +23,7 @@ class Model_1D_Benchmark():
 
 class Model_1D_Stochastic_Finite_Step_Benchmark(Model_1D_Benchmark):
     def __init__(self, total_len, point_num, boundary_cond, materials, gauss_discrete_direction_num = 2):
-        Model_1D_Benchmark.__init__(self, total_len, point_num, boundary_cond, materials, gauss_discrete_direction_num)
+        Model_1D_Benchmark.__init__(self, float(total_len), point_num, boundary_cond, materials, gauss_discrete_direction_num)
 
     def benchmark_once(self):
         # NOTE: Gauss-Legendre is taken care of inside the solver instead of the

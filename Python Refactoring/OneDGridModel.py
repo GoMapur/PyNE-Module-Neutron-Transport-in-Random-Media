@@ -158,19 +158,17 @@ class Stochastic_Gird(Grid):
         while cur_total_len < self.len():
             cur_mat = Utility.cumulative_possibility_dual(thinkness_distribution, self.material_list())
             cur_total_len += random.expovariate(1 / cur_mat.thickness())
-            cur_total_len = min(self.len, cur_total_len)
+            cur_total_len = min(self.len(), cur_total_len)
             self.interfaces.add(cur_total_len)
             self.intervals += [Interval(cur_mat, cur_left, cur_total_len)]
             # Below is dealing with x -> interval in special case
             if cur_left == 0.0:
-                self.interfaceToInterval[cur_total_len] = [None, self.intervals[-1]]
+                self.interfaceToInterval[0.0] = [None, self.intervals[-1]]
             elif cur_total_len == self.len:
                 self.interfaceToInterval[cur_total_len] = [self.intervals[-1], None]
             else:
                 self.interfaceToInterval[cur_total_len] = [self.intervals[-2], self.intervals[-1]]
             cur_left = cur_total_len
-        print(total_len)
-        print([l.right() for l in self.intervals])
 
     def intervalsAt(self, place):
         """ Because the number of total points is considerable, use a binary
