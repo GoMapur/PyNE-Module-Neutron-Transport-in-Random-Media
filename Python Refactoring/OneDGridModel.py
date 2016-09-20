@@ -11,8 +11,11 @@
 # my honor.
 # Mingjian Lu, July 2016
 
+# TODO: Live console
+
 import numpy as np
 from itertools import count
+import random
 
 class Model_Material():
     _ids = count(0)
@@ -24,49 +27,49 @@ class Model_Material():
             name to differentiate them.
         """
         material_index_counter = next(self._ids)
-        self.thickness = float(thickness)
-        self.cross_section = float(cross_section)
-        self.scattering_ratio = float(scattering_ratio)
-        self.source = float(homogeneous_isotropic_source)
-        self.index = material_index_counter
+        self.tthickness = float(thickness)
+        self.ccross_section = float(cross_section)
+        self.sscattering_ratio = float(scattering_ratio)
+        self.ssource = float(homogeneous_isotropic_source)
+        self.iindex = material_index_counter
         if name is None:
-            self.name = "__inner_mat_" + str(material_index_counter)
+            self.nname = "__inner_mat_" + str(material_index_counter)
 
     def thickness(self):
-        return self.thickness
+        return self.tthickness
 
     def cross_section(self):
-        return self.cross_section
+        return self.ccross_section
 
     def source(self):
-        return self.source
+        return self.ssource
 
     def scattering_ratio(self):
-        return self.scattering_ratio
+        return self.sscattering_ratio
 
     def scattering_section(self):
-        return self.scattering_ratio * self.cross_section
+        return self.sscattering_ratio * self.ccross_section
 
     def unaffected_section(self):
         return self.cross_section() - self.scattering_section()
 
     def name(self):
-        return self.name
+        return self.nname
 
 class Interval():
     """ This class is for material intervals, note the difference between this
         and the actual grid, which is the point where we go for our calculation.
     """
     def __init__(self, material, left_point, right_point):
-        self.material = material
+        self.mmaterial = material
         self.left_point = float(left_point)
         self.right_point = float(right_point)
 
     def material_index(self):
-        return self.material.index()
+        return self.mmaterial.index()
 
     def material(self):
-        return self.material
+        return self.mmaterial
 
     def left(self):
         return self.left_point
@@ -81,13 +84,13 @@ class Interval():
         return self.len()
 
     def isWithinInterval(self, place):
-        return self.left < place and place < self.right
+        return self.left() < place and place < self.right()
 
     def isAtBoundary(self, place):
-        return self.left == place or self.right == place
+        return self.left() == place or self.right() == place
 
     def mid_point(self):
-        return (self.left + self.right) / 2.0
+        return (self.left() + self.right()) / 2.0
 
 class Grid():
     # TODO: look at comments
@@ -103,7 +106,7 @@ class Grid():
             so it is needed to calculate from grid to obtain actual used step
             size.
         """
-        self.len = float(total_len)
+        self.llen = float(total_len)
         self.bc_L = float(boundary_cond[0])
         self.bc_R = float(boundary_cond[1])
         self.materials = materials
@@ -113,7 +116,7 @@ class Grid():
         """ Note: This is actual physical measure of the grid length,
             not some abstract meaning of 'length'
         """
-        return self.len
+        return self.llen
 
     def boundary_condition(self):
         return [self.bc_L, self.bc_R]
@@ -148,24 +151,26 @@ class Stochastic_Gird(Grid):
         self.interfaces = set([0.0])
         self.interfaceToInterval = {}
         assert(len(self.materials) > 1, "Stochastic case should have at least two materials.")
-        thinkness_distribution = [mat.thickness for mat in self.materials]
+        thinkness_distribution = [mat.thickness() for mat in self.material_list()]
         # Generate the intervals
         cur_left = 0.0
         cur_total_len = 0.0
-        while cur_total_len < self.len:
-            cur_mat = Utility.cumulative_possibility(thinkness_distribution, self.materials)
-            cur_total_len += random.expovariate(1 / cur_mat.thickness)
+        while cur_total_len < self.len():
+            cur_mat = Utility.cumulative_possibility_dual(thinkness_distribution, self.material_list())
+            cur_total_len += random.expovariate(1 / cur_mat.thickness())
             cur_total_len = min(self.len, cur_total_len)
             self.interfaces.add(cur_total_len)
             self.intervals += [Interval(cur_mat, cur_left, cur_total_len)]
             # Below is dealing with x -> interval in special case
             if cur_left == 0.0:
-                self.interfaceToInterval[cur_total_len] = [None, self.interval[-1]]
+                self.interfaceToInterval[cur_total_len] = [None, self.intervals[-1]]
             elif cur_total_len == self.len:
-                self.interfaceToInterval[cur_total_len] = [self.interval[-1], None]
+                self.interfaceToInterval[cur_total_len] = [self.intervals[-1], None]
             else:
-                self.interfaceToInterval[cur_total_len] = [self.interval[-2], self.interval[-1]]
+                self.interfaceToInterval[cur_total_len] = [self.intervals[-2], self.intervals[-1]]
             cur_left = cur_total_len
+        print(total_len)
+        print([l.right() for l in self.intervals])
 
     def intervalsAt(self, place):
         """ Because the number of total points is considerable, use a binary
@@ -249,7 +254,8 @@ class Homogeneous_Grid(Grid):
         assert(len(self.materials) == 2, "Periodic case should have two materials.")
 
 class Utility():
-    def cumulative_possibility(distribution, distribution_sum, corresponding_choices):
+    @staticmethod
+    def cumulative_possibility_tri(distribution, distribution_sum, corresponding_choices):
         assert(len(distribution) == len(corresponding_choices), "List lenghth unmatch!")
         assert(len(corresponding_choices) != 0, "List empty!")
         distribution = [i/distribution_sum for i in distribution]
@@ -261,9 +267,11 @@ class Utility():
                 return corresponding_choices[i]
         return corresponding_choices[-1]
 
-    def cumulative_possibility(distribution, corresponding_choices):
+    @staticmethod
+    def cumulative_possibility_dual(distribution, corresponding_choices):
         total_distribution = sum(distribution)
-        return cumulative_possibility(distribution, total_distribution, corresponding_choices)
+        return Utility.cumulative_possibility_tri(distribution, total_distribution, corresponding_choices)
 
-    def cumulative_possibility(distribution):
-        return cumulative_possibility(distribution, [i for i in range(len(distribution))])
+    @staticmethod
+    def cumulative_possibility_sin(distribution):
+        return Utility.cumulative_possibility_dual(distribution, [i for i in range(len(distribution))])

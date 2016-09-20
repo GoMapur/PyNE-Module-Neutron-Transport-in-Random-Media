@@ -17,18 +17,18 @@ import numpy as np
 
 class Spatial_Point():
     def __init__(self, place, material = None, isRequired = True):
-        self.material = None
-        self.x = place
+        self.mmaterial = None
+        self.xx = place
         self.rek = isRequired
 
     def isInterface(self):
         return self.material is None
 
     def material(self):
-        return self.material
+        return self.mmaterial
 
     def x(self):
-        return self.x
+        return self.xx
 
     def required():
         return self.rek
@@ -45,7 +45,6 @@ class Solution_Point():
     def spatial_point(self):
         return self.cp
 
-
 class Model_1D_Numerical_Solver():
     cache = {}
 
@@ -57,17 +56,17 @@ class Model_1D_Numerical_Solver():
         """
         self.n = total_point_num
         self.step_size = discretization_stepsize
-        self.discrete_direction_num = discrete_direction_num / 2 * 2
+        self.discrete_direction_num = gauss_discrete_direction_num / 2 * 2
         self.grid = grid
         self.mesh = []
         # Note: local cache is for solved solutions in case redundant calculation
         self.local_cache = {}
         # Calculate GAUSS-LEGENDRE QUADRATURE
-        if self.discrete_direction_num in cache:
-            self.guass_legendre = cache[discrete_direction_num]
+        if self.discrete_direction_num in Model_1D_Numerical_Solver.cache:
+            self.guass_legendre = Model_1D_Numerical_Solver.cache[discrete_direction_num]
         else:
             self.guass_legendre = np.polynomial.legendre.leggauss(self.discrete_direction_num)
-            cache[discrete_direction_num] = self.guass_legendre
+            Model_1D_Numerical_Solver.cache[self.discrete_direction_num] = self.guass_legendre
 
     def point_num(self):
         self.__check_n()
@@ -112,7 +111,7 @@ class Model_1D_Stochastic_Finite_Step_Solver(Model_1D_Numerical_Solver):
     """
     def __init__(self, grid_model, base_point_num = -1, base_step_size = -1, gauss_discrete_direction_num = 2):
         assert (base_point_num != -1 or base_step_size != -1) and not (base_point_num != -1 and base_step_size != -1), "Please either specify base point number or base step size."
-        Model_1D_Numerical_Solver.__init__(self, grid = grid_model, gauss_discrete_direction_num = (discrete_direction_num / 2) * 2)
+        Model_1D_Numerical_Solver.__init__(self, grid = grid_model, gauss_discrete_direction_num = (gauss_discrete_direction_num / 2) * 2)
         if base_point_num != -1:
             self.base_step_size = grid_model.len() / float(base_point_num)
             self.base_point_num = base_point_num
@@ -122,8 +121,8 @@ class Model_1D_Stochastic_Finite_Step_Solver(Model_1D_Numerical_Solver):
         # Start constructing the mesh, note we will add additional points on
         # interface and inside intercal if the basic points number and step
         # size is not enought to cover all the intervals
-        # TODO: BUG may exist, need to debug， Is n * step_size guaranteed to
-        #       be the same as total length??
+        # TODO: BUG may exist, need to debug, Is n * step_size guaranteed to
+        #       be the same as total length?
         self.mesh += [Spatial_Point(0.0, None)]
         last_required_point = 0.0
         for interval in grid_model:
@@ -140,6 +139,7 @@ class Model_1D_Stochastic_Finite_Step_Solver(Model_1D_Numerical_Solver):
                         self.mesh += [Spatial_Point(interval.right(), isRequired = next_base_point == interval.right())]
                     if next_base_point == interval.right():
                         last_required_point = next_base_point
+                # print(str(self.mesh[-1].x()) + "/" + str(interval.right()))
 
         self.mesh_interval_len = [(self.mesh[i+1].x() - self.mesh[i].x()) for i in range(len(self.mesh) - 1)]
         self.n = len(self.mesh)
