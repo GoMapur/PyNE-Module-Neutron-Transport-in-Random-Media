@@ -34,6 +34,7 @@ class Model_1D_Stochastic_Finite_Step_Benchmark(Model_1D_Benchmark):
         grid_model = Stochastic_Gird(self.total_len, self.boundary_cond, self.materials)
         solver = Model_1D_Stochastic_Finite_Step_Solver(grid_model, self.point_num, gauss_discrete_direction_num = self.gauss_discrete_direction_num)
         solution = solver.solve_scalar_flux()
+        solver.plot_scalar_flux()
         return solution
 
     def benchmark(self):

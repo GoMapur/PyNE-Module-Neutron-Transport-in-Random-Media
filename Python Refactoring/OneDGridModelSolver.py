@@ -14,6 +14,7 @@
 # TODO: 1. Debug
 
 import numpy as np
+import matplotlib.pyplot as plt
 
 class Spatial_Point():
     def __init__(self, place, material, isRequired = True):
@@ -312,12 +313,12 @@ class Model_1D_Stochastic_Finite_Step_Solver(Model_1D_Numerical_Solver):
             req_set[p.index] = p_ind
         for cur_dir in range(self.discrete_direction_num):
             for cur_p in range(self.n - 1):
-                if cur_p < self.discrete_direction_num / 2:
+                if cur_dir < self.discrete_direction_num / 2:
                     ax_p = cur_p
-                    req_solution[-1].add_dir_val(cur_dir, self.grid.right_boundary_condition())
+                    req_solution[-1].add_dir_val(cur_dir, self.grid.left_boundary_condition())
                 else:
                     ax_p = cur_p + 1
-                    req_solution[0].add_dir_val(cur_dir, self.grid.left_boundary_condition())
+                    req_solution[0].add_dir_val(cur_dir, self.grid.right_boundary_condition())
                 if ax_p in req_set:
                     req_solution[req_set[ax_p]].add_dir_val(cur_dir, complete_solution[cur_dir * (self.n - 1) + cur_p])
         self.local_cache['req_solution'] = req_solution
@@ -335,14 +336,14 @@ class Model_1D_Stochastic_Finite_Step_Solver(Model_1D_Numerical_Solver):
             scalar_flux[solution_p_index] = sum([wt[dir_index] * solution_p.dir_val[dir_index] for dir_index in range(self.discrete_direction_num)])
         return scalar_flux
 
-    # def plot_scalar_flux(self):
-    #     if 'scalar_flux' in self.local_cache:
-    #         scalar_flux = self.local_cache['scalar_flux']
-    #     else:
-    #         scalar_flux = self.solve_scalar_flux()
-    #     req_solution = self.local_cache['req_solution']
-    #     plt.plot([p.spatial_point().x() for p in req_solution], scalar_flux)
-    #     plt.show()
+    def plot_scalar_flux(self):
+        if 'scalar_flux' in self.local_cache:
+            scalar_flux = self.local_cache['scalar_flux']
+        else:
+            scalar_flux = self.solve_scalar_flux()
+        req_solution = self.local_cache['req_solution']
+        plt.plot([p.spatial_point().x() for p in req_solution], scalar_flux)
+        plt.show()
 
     def add_point(self, x):
         for i in range(len(self.mesh)):
