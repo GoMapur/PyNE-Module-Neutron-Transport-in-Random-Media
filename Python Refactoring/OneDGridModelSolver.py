@@ -173,9 +173,9 @@ class Model_1D_Stochastic_Finite_Step_Solver(Model_1D_Numerical_Solver):
             dir_submatrix_index = dir_index * mesh_point_num
             # Deal with edge case, in which left part does not exist
             # TODO: Test different points, 2,3,4,5, make this more flexible
-            A[dir_submatrix_index][dir_submatrix_index] = -u[dir_index] / h[0] + self.mesh[0].material().cross_section() - self.mesh[0].material().scattering_section() * wt[dir_index] / 2.0
+            A[dir_submatrix_index][dir_submatrix_index] = -u[dir_index] / h[0] + self.mesh[0].material()[1].cross_section() - self.mesh[0].material()[1].scattering_section() * wt[dir_index] / 2.0
             A[dir_submatrix_index][dir_submatrix_index+1] = u[dir_index] / h[0]
-            B[dir_submatrix_index] = self.mesh[0].material().source() / 2.0
+            B[dir_submatrix_index] = self.mesh[0].material()[1].source() / 2.0
 
             A[dir_submatrix_index + self.n - 1][dir_submatrix_index + self.n - 2] = -u[dir_index] * h[-1]/h[-2] * (h[-1] + h[-2])
             A[dir_submatrix_index + self.n - 1][dir_submatrix_index + self.n - 1]= u[dir_index] * (h[-1] - h[-2])/(h[-1]*h[-2]) + self.mesh[-1].material().cross_section() - self.mesh[-1].material().scattering_section() * wt[dir_index] / 2.0
