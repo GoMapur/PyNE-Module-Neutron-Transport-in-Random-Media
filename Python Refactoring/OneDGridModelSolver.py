@@ -121,8 +121,6 @@ class Model_1D_Stochastic_Finite_Step_Solver(Model_1D_Numerical_Solver):
         # Start constructing the mesh, note we will add additional points on
         # interface and inside intercal if the basic points number and step
         # size is not enought to cover all the intervals
-        # TODO: BUG may exist, need to debug, Is n * step_size guaranteed to
-        #       be the same as total length?
         self.mesh += [Spatial_Point(0.0, [None, grid_model.intervalsAt(0.0)[0].material()])]
         last_required_point = 0.0
         grid_iter = [interval for interval in grid_model]
@@ -137,15 +135,15 @@ class Model_1D_Stochastic_Finite_Step_Solver(Model_1D_Numerical_Solver):
                     break
                 if next_base_point < interval.right():
                     # If adding a point does not cause exceeding the interface
-                    self.mesh += [Spatial_Point(next_base_point, [interval.material()])]
+                    self.mesh += [Spatial_Point(next_base_point, [interval.material(), interval.material()])]
                     last_required_point = next_base_point
                 elif next_base_point > interval.right():
                     if interval.left() == self.mesh[-1].x():
-                        self.mesh += [Spatial_Point(interval.mid_point(), [interval.material()], isRequired = False), Spatial_Point(interval.right(), [interval.material(), next_interval.material()], isRequired = False)]
+                        self.mesh += [Spatial_Point(interval.mid_point(), [interval.material(), interval.material()], isRequired = False), Spatial_Point(interval.right(), [interval.material(), next_interval.material()], isRequired = False)]
                     else:
                         self.mesh += [Spatial_Point(interval.right(), [interval.material(), next_interval.material()], isRequired = False)]
                 elif next_base_point == interval.right():
-                    self.mesh += [Spatial_Point(interval.right()), [interval.material(), next_interval.material()]]
+                    self.mesh += [Spatial_Point(interval.right(), [interval.material(), next_interval.material()])]
                     last_required_point = next_base_point
                 # print(str(self.mesh[-1].required()) + " " + str(self.mesh[-1].x()) + " / " + str(interval.right()))
 
@@ -177,26 +175,26 @@ class Model_1D_Stochastic_Finite_Step_Solver(Model_1D_Numerical_Solver):
             A[dir_submatrix_index][dir_submatrix_index+1] = u[dir_index] / h[0]
             B[dir_submatrix_index] = self.mesh[0].material()[1].source() / 2.0
 
-            A[dir_submatrix_index + self.n - 1][dir_submatrix_index + self.n - 2] = -u[dir_index] * h[-1]/h[-2] * (h[-1] + h[-2])
-            A[dir_submatrix_index + self.n - 1][dir_submatrix_index + self.n - 1]= u[dir_index] * (h[-1] - h[-2])/(h[-1]*h[-2]) + self.mesh[-1].material().cross_section() - self.mesh[-1].material().scattering_section() * wt[dir_index] / 2.0
-            B[dir_submatrix_index + self.n - 1] = self.mesh[-1].material().source() / 2.0 - u[dir_index] * h[-2]/h[-1] * 1.0 / (h[-1]+h[-2]) * self.grid.right_boundary_condition()
+            A[dir_submatrix_index + mesh_point_num - 1][dir_submatrix_index + mesh_point_num - 2] = -u[dir_index] * h[-1]/h[-2] * (h[-1] + h[-2])
+            A[dir_submatrix_index + mesh_point_num - 1][dir_submatrix_index + mesh_point_num - 1]= u[dir_index] * (h[-1] - h[-2])/(h[-1]*h[-2]) + self.mesh[-2].material()[1].cross_section() - self.mesh[-2].material()[1].scattering_section() * wt[dir_index] / 2.0
+            B[dir_submatrix_index + mesh_point_num - 1] = self.mesh[-2].material()[1].source() / 2.0 - u[dir_index] * h[-2]/h[-1] * 1.0 / (h[-1]+h[-2]) * self.grid.right_boundary_condition()
             # The first and last points are already taken care of
-            for spatial_point_index in range(1, len(self.mesh[:-1])):
+            for spatial_point_index in range(1, len(self.mesh[:-3])):
                 cur_index = dir_submatrix_index + spatial_point_index
                 spatial_point = self.mesh[spatial_point_index]
                 h_ = h[spatial_point_index]
                 _h = h[spatial_point_index - 1]
                 if spatial_point.isInterface():
-                    next_mat = self.mesh[spatial_point_index + 1].material()
+                    next_mat = self.mesh[spatial_point_index].material()[1]
                     h__ = h[spatial_point_index + 1]
                     th = h_ + h__
                     hh = 1.0/h_ + 1.0/h__
                     dh = h_/h__
                     A[cur_index][cur_index] = -u[dir_index] * (1.0/h_ + 1.0/th) + next_mat.cross_section() - next_mat.scattering_section() * wt[dir_index] / 2.0
                     A[cur_index][cur_index + 1] = u[dir_index] * hh
-                    if spatial_point_index == mesh_point_num - 1:
+                    if spatial_point_index == 1:
                         # If the point is the last third point, then it does not have enough points to do the calculation, we need to deal with this using boundary condition
-                        B[cur_index] = next_mat.source() / 2.0 + u[dir_index] * dh * 1.0/th * self.grid.right_boundary_condition()
+                        B[cur_index] = next_mat.source() / 2.0 + u[dir_index] * dh * 1.0/th * self.grid.left_boundary_condition()
                     else:
                         A[cur_index][cur_index + 2] = -u[dir_index] * dh * 1.0/th
                         B[cur_index] = next_mat.source() / 2.0
@@ -228,41 +226,39 @@ class Model_1D_Stochastic_Finite_Step_Solver(Model_1D_Numerical_Solver):
                 for tmp_pt_index in range(1, mesh_point_num):
                     matrix_entry_index_row = dir_submatrix_index + tmp_pt_index
                     matrix_entry_index_col = positive_dir_in_matrix_index + tmp_pt_index - 1
-                    if self.mesh[tmp_pt_index].isInterface():
-                        A[matrix_entry_index_row][matrix_entry_index_col] = -self.mesh[tmp_pt_index+1].scattering_section() * wt[self.discrete_direction_num / 2 + tmp_dir_index] / 2.0
-                    else:
-                        A[matrix_entry_index_row][matrix_entry_index_col] = -self.mesh[tmp_pt_index].scattering_section() * wt[self.discrete_direction_num / 2 + tmp_dir_index] / 2.0
-                B[dir_submatrix_index] += self.mesh[0].material().scattering_section() * wt[self.discrete_direction_num / 2 + tmp_dir_index] * self.grid.right_boundary_condition() / 2.0
+                    A[matrix_entry_index_row][matrix_entry_index_col] = -self.mesh[tmp_pt_index].material()[1].scattering_section() * wt[self.discrete_direction_num / 2 + tmp_dir_index] / 2.0
+                B[dir_submatrix_index] += self.mesh[0].material()[1].scattering_section() * wt[self.discrete_direction_num / 2 + tmp_dir_index] * self.grid.right_boundary_condition() / 2.0
 
         # Second half, which is basically the same, thus plz refactorizing this part
         for dir_index in range(self.discrete_direction_num / 2, self.discrete_direction_num):
             dir_submatrix_index = dir_index * mesh_point_num
             # Deal with edge case, in which left part does not exist
             # TODO: Test different points, 2,3,4,5, make this more flexible
-            A[dir_submatrix_index][dir_submatrix_index] = u[dir_index] * (h[1] - h[0])/(h[0] * h[0]) + self.mesh[0].material().cross_section() - self.mesh[0].material().scattering_section() * wt[dir_index] / 2.0
-            A[dir_submatrix_index][dir_submatrix_index+1] = u[dir_index] * h[0]/h[1] * (h[0]+h[1])
-            B[dir_submatrix_index] = self.mesh[0].material().source() / 2.0 + u[dir_index] * h[1]/h[0] * 1.0 / (h[0]+h[1]) * self.grid.left_boundary_condition()
 
-            A[dir_submatrix_index + self.n - 1][dir_submatrix_index + self.n - 2] = u[dir_index] / h[-1]
-            A[dir_submatrix_index + self.n - 1][dir_submatrix_index + self.n - 1]= -u[dir_index] / h[-1] + self.mesh[-1].material().cross_section() - self.mesh[-1].material().scattering_section() * wt[dir_index] / 2.0
-            B[dir_submatrix_index + self.n - 1] = self.mesh[-1].material().source() / 2.0
+            A[dir_submatrix_index][dir_submatrix_index] = u[dir_index] * (h[1] - h[0])/(h[0] * h[0]) + self.mesh[1].material()[0].cross_section() - self.mesh[1].material()[0].scattering_section() * wt[dir_index] / 2.0
+            A[dir_submatrix_index][dir_submatrix_index+1] = u[dir_index] * h[0]/h[1] * (h[0]+h[1])
+            B[dir_submatrix_index] = self.mesh[1].material()[0].source() / 2.0 + u[dir_index] * h[1]/h[0] * 1.0 / (h[0]+h[1]) * self.grid.left_boundary_condition()
+
+            A[dir_submatrix_index + mesh_point_num - 1][dir_submatrix_index + mesh_point_num - 2] = u[dir_index] / h[-1]
+            A[dir_submatrix_index + mesh_point_num - 1][dir_submatrix_index + mesh_point_num - 1]= -u[dir_index] / h[-1] + self.mesh[-1].material()[0].cross_section() - self.mesh[-1].material()[0].scattering_section() * wt[dir_index] / 2.0
+            B[dir_submatrix_index + mesh_point_num - 1] = self.mesh[-1].material()[0].source() / 2.0
             # The first and last points are already taken care of
-            for spatial_point_index in range(1, len(self.mesh[:-1])):
+            for spatial_point_index in range(2, len(self.mesh[:-2])):
                 cur_index = dir_submatrix_index + spatial_point_index
                 spatial_point = self.mesh[spatial_point_index]
                 h_ = h[spatial_point_index]
                 _h = h[spatial_point_index - 1]
                 if spatial_point.isInterface():
-                    prev_mat = self.mesh[spatial_point_index - 1].material()
+                    prev_mat = self.mesh[spatial_point_index].material()[0]
                     __h = h[spatial_point_index - 2]
                     th = _h + __h
                     hh = 1/_h + 1/__h
                     dh = _h/__h
                     A[cur_index][cur_index] = u[dir_index] * (1.0/_h + 1.0/th) + prev_mat.cross_section() - prev_mat.scattering_section() * wt[dir_index] / 2.0
                     A[cur_index][cur_index + 1] = -u[dir_index] * hh
-                    if spatial_point_index == 2:
+                    if spatial_point_index == mesh_point_num - 2:
                         # If the point is the first third point, then it does not have enough points to do the calculation, we need to deal with this using boundary condition
-                        B[cur_index] = prev_mat.source() / 2.0 - u[dir_index] * dh * 1.0/th * self.grid.left_boundary_condition()
+                        B[cur_index] = prev_mat.source() / 2.0 - u[dir_index] * dh * 1.0/th * self.grid.right_boundary_condition()
                     else:
                         A[cur_index][cur_index + 2] = u[dir_index] * dh * 1.0/th
                         B[cur_index] = prev_mat.source() / 2.0
@@ -294,14 +290,11 @@ class Model_1D_Stochastic_Finite_Step_Solver(Model_1D_Numerical_Solver):
                 for tmp_pt_index in range(mesh_point_num - 1):
                     matrix_entry_index_row = dir_submatrix_index + tmp_pt_index
                     matrix_entry_index_col = negative_dir_in_matrix_index + tmp_pt_index + 1
-                    if self.mesh[tmp_pt_index + 1].isInterface():
-                        A[matrix_entry_index_row][matrix_entry_index_col] = -self.mesh[tmp_pt_index].scattering_section() * wt[self.discrete_direction_num / 2 + tmp_dir_index] / 2.0
-                    else:
-                        A[matrix_entry_index_row][matrix_entry_index_col] = -self.mesh[tmp_pt_index + 1].scattering_section() * wt[self.discrete_direction_num / 2 + tmp_dir_index] / 2.0
-                B[dir_submatrix_index] += self.mesh[0].material().scattering_section() * wt[self.discrete_direction_num / 2 + tmp_dir_index] * self.grid.right_boundary_condition() / 2.0
+                    A[matrix_entry_index_row][matrix_entry_index_col] = -self.mesh[tmp_pt_index + 1].material()[1].scattering_section() * wt[self.discrete_direction_num / 2 + tmp_dir_index] / 2.0
+                B[dir_submatrix_index] += self.mesh[-1].material()[0].scattering_section() * wt[self.discrete_direction_num / 2 + tmp_dir_index] * self.grid.right_boundary_condition() / 2.0
         # Return the solution of this linear system, note the result is both undetermined and unchecked, need to put more tests for this solve procedure and refactorizing this since
         # it is such a big block lol
-        self.local_cache['complete_solution'] = numpy.linalg.solve(A, B)
+        self.local_cache['complete_solution'] = np.linalg.solve(A, B)
         return self.local_cache['complete_solution']
 
     def solve_required_points(self):
@@ -319,7 +312,7 @@ class Model_1D_Stochastic_Finite_Step_Solver(Model_1D_Numerical_Solver):
             req_set[p.index] = p_ind
         for cur_dir in range(self.discrete_direction_num):
             for cur_p in range(self.n - 1):
-                if cur < self.discrete_direction_num / 2:
+                if cur_p < self.discrete_direction_num / 2:
                     ax_p = cur_p
                     req_solution[-1].add_dir_val(cur_dir, self.grid.right_boundary_condition())
                 else:
@@ -338,7 +331,7 @@ class Model_1D_Stochastic_Finite_Step_Solver(Model_1D_Numerical_Solver):
         scalar_flux = [0.0] * len(req_solution)
         wt = self.gauss_weight()
         for solution_p_index in range(len(req_solution)):
-            solution_p = req_solution[solution_p]
+            solution_p = req_solution[solution_p_index]
             scalar_flux[solution_p_index] = sum([wt[dir_index] * solution_p.dir_val[dir_index] for dir_index in range(self.discrete_direction_num)])
         return scalar_flux
 
