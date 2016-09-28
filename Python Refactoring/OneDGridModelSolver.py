@@ -64,7 +64,7 @@ class Model_1D_Numerical_Solver():
         self.local_cache = {}
         # Calculate GAUSS-LEGENDRE QUADRATURE
         if self.discrete_direction_num in Model_1D_Numerical_Solver.cache:
-            self.guass_legendre = Model_1D_Numerical_Solver.cache[discrete_direction_num]
+            self.guass_legendre = Model_1D_Numerical_Solver.cache[self.discrete_direction_num]
         else:
             self.guass_legendre = np.polynomial.legendre.leggauss(self.discrete_direction_num)
             Model_1D_Numerical_Solver.cache[self.discrete_direction_num] = self.guass_legendre
@@ -216,11 +216,8 @@ class Model_1D_Stochastic_Finite_Step_Solver(Model_1D_Numerical_Solver):
                         continue
                     negative_dir_in_matrix_index = tmp_dir_index * mesh_point_num
                     matrix_entry_index_row = dir_submatrix_index + tmp_pt_index
-                    matrix_entry_index_col = dir_submatrix_index + negative_dir_in_matrix_index
-                    if self.mesh[tmp_pt_index].isInterface():
-                        A[matrix_entry_index_row][matrix_entry_index_col] = -self.mesh[tmp_pt_index+1].scattering_section() * wt[tmp_dir_index] / 2.0
-                    else:
-                        A[matrix_entry_index_row][matrix_entry_index_col] = -self.mesh[tmp_pt_index].scattering_section() * wt[tmp_dir_index] / 2.0
+                    matrix_entry_index_col =  negative_dir_in_matrix_index + tmp_pt_index
+                    A[matrix_entry_index_row][matrix_entry_index_col] = -self.mesh[tmp_pt_index].material()[1].scattering_section() * wt[tmp_dir_index] / 2.0
 
             for tmp_dir_index in range(self.discrete_direction_num / 2):
                 positive_dir_in_matrix_index = (self.discrete_direction_num / 2 + tmp_dir_index) * mesh_point_num
@@ -280,11 +277,8 @@ class Model_1D_Stochastic_Finite_Step_Solver(Model_1D_Numerical_Solver):
                         continue
                     positive_dir_in_matrix_index = tmp_dir_index * mesh_point_num
                     matrix_entry_index_row = dir_submatrix_index + tmp_pt_index
-                    matrix_entry_index_col = dir_submatrix_index + positive_dir_in_matrix_index
-                    if self.mesh[tmp_pt_index + 1].isInterface():
-                        A[matrix_entry_index_row][matrix_entry_index_col] = -self.mesh[tmp_pt_index].scattering_section() * wt[tmp_dir_index] / 2.0
-                    else:
-                        A[matrix_entry_index_row][matrix_entry_index_col] = -self.mesh[tmp_pt_index + 1].scattering_section() * wt[tmp_dir_index] / 2.0
+                    matrix_entry_index_col =  positive_dir_in_matrix_index + tmp_pt_index
+                    A[matrix_entry_index_row][matrix_entry_index_col] = -self.mesh[tmp_pt_index + 1].material()[0].scattering_section() * wt[tmp_dir_index] / 2.0
 
             for tmp_dir_index in range(self.discrete_direction_num / 2):
                 negative_dir_in_matrix_index = tmp_dir_index * mesh_point_num
@@ -295,6 +289,8 @@ class Model_1D_Stochastic_Finite_Step_Solver(Model_1D_Numerical_Solver):
                 B[dir_submatrix_index] += self.mesh[-1].material()[0].scattering_section() * wt[self.discrete_direction_num / 2 + tmp_dir_index] * self.grid.right_boundary_condition() / 2.0
         # Return the solution of this linear system, note the result is both undetermined and unchecked, need to put more tests for this solve procedure and refactorizing this since
         # it is such a big block lol
+        np.savetxt("A.csv", np.asarray(A), delimiter=",")
+        np.savetxt("B.csv", np.asarray(B), delimiter=",")
         self.local_cache['complete_solution'] = np.linalg.solve(A, B)
         return self.local_cache['complete_solution']
 
@@ -354,15 +350,13 @@ class Model_1D_Stochastic_Finite_Step_Solver(Model_1D_Numerical_Solver):
                 return
 
 class Model_1D_Periodic_Solver(Model_1D_Numerical_Solver):
-        def __init__(self, grid_model, point_num, gauss_discrete_direction_num = 2, start_index = 0):
-            for mat in grid_model.material_list():
-                assert int(mat.thickness() / self.step_size) == mat.thickness() / self.step_size, "Interfaces must be included in discretization."
-            Model_1D_Numerical_Solver.__init__(self, grid = grid_model, gauss_discrete_direction_num = (discrete_direction_num / 2) * 2, total_point_num = point_num, discretization_stepsize = total_len / point_num)
+        def __init__(self, grid, point_num, discrete_direction_num = 2, start_index = 0):
+            Model_1D_Numerical_Solver.__init__(self, grid = grid, gauss_discrete_direction_num = (discrete_direction_num / 2) * 2, total_point_num = point_num, discretization_stepsize = grid.len() / point_num)
             self.start_index = start_index
 
         def solve(self):
             mat1, mat2 = self.grid.materials[0], self.grid.materials[1]
-            T = self.grid.len
+            T = self.grid.len()
             m1,m2 = mat1.thickness(), mat2.thickness()
             n,N = self.n, self.discrete_direction_num
             Es1,Es2 = mat1.scattering_section(), mat2.scattering_section()
@@ -417,7 +411,7 @@ class Model_1D_Periodic_Solver(Model_1D_Numerical_Solver):
             extra = [0] * n
             t1 = i * H
 
-            save_csv(x, 'xsn')
+            # save_csv(x, 'xsn')
 
 
             tmp = [0, int(x[j-1 , 2-1])]
@@ -487,10 +481,10 @@ class Model_1D_Periodic_Solver(Model_1D_Numerical_Solver):
                         L = np.vstack((L, np.asarray([tmp])))
                         h.append(L1[n1-1][1-1] - L1[n1-1-1][1-1]) #adds to h[] (Matlab) not indexing
                         i += 1
-            save_csv(L1, 'L')
+            # save_csv(L1, 'L')
             n1 -= 1
             L = L1
-            save_csv(np.asarray(h), 'h')
+            # save_csv(np.asarray(h), 'h')
             #L tells you which material, L's index doesnt matter, x's index doesnt matter, Es, Et, Q does
             A = np.zeros((N*n1,N*n1))
             B = np.zeros((N*n1,1))

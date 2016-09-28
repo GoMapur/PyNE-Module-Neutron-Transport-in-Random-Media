@@ -7,8 +7,11 @@
 # Mingjian Lu, July 2016
 
 import numpy as np
+import matplotlib.pyplot as plt
 from OneDGridModel import *
 from OneDGridModelSolver import *
+import functools
+import itertools
 
 class Model_1D_Benchmark():
     def __init__(self, total_len, point_num, boundary_cond, materials, gauss_discrete_direction_num):
@@ -40,16 +43,38 @@ class Model_1D_Stochastic_Finite_Step_Benchmark(Model_1D_Benchmark):
     def benchmark(self):
         # TODO: This fixed number should changed to be a indicator
         #       showing when should we stop
-        # while i < 100000:
-        #     solution = self.benchmark_once()
-        print(self.benchmark_once())
+        iter_times = 1
+        solution_list = list(itertools.starmap(self.benchmark_once, [()] * iter_times))
+        sum_of_sol = functools.reduce( (lambda x, y: np.array(x) + np.array(y)), solution_list )
+        avg_sol = np.array(sum_of_sol) / float(iter_times)
+        print avg_sol
+
+        # plt.plot([self.total_len / self.point_num * i for i in range(int(self.total_len / self.point_num))], avg_sol)
+        # plt.show()
+
 
 class Model_1D_Periodic_Finite_Step_Benchmark(Model_1D_Benchmark):
     def __init__(self, total_len, point_num, boundary_cond, materials, gauss_discrete_direction_num = 2):
-        Model_1D_Benchmark.__init__(self, total_len, point_num, boundary_cond, materials, gauss_discrete_direction_num)
+        Model_1D_Benchmark.__init__(self, float(total_len), point_num, boundary_cond, materials, gauss_discrete_direction_num)
 
     def benchmark(self):
-        grid_model = Periodic_Grid(total_len, boundary_cond, materials)
+        grid_model = Periodic_Grid(self.total_len, self.boundary_cond, self.materials)
+        N = self.gauss_discrete_direction_num
+    	T = self.total_len
+    	n = self.point_num
+    	yo = self.boundary_cond[0]
+    	y_ = self.boundary_cond[1]
+        m1 = self.materials[0].thickness()
+        m2 = self.materials[1].thickness()
+
+        mat1, mat2 = grid_model.materials[0], grid_model.materials[1]
+        T = grid_model.len()
+        m1,m2 = mat1.thickness(), mat2.thickness()
+        Es1,Es2 = mat1.scattering_section(), mat2.scattering_section()
+        Et1,Et2 = mat1.cross_section(), mat2.cross_section()
+        yo,y_ = grid_model.left_boundary_condition(), grid_model.right_boundary_condition()
+        Q1,Q2 = mat1.source(), mat2.source()
+
         a = 1
         reflec = 0
         reflec2 = 0
@@ -64,12 +89,13 @@ class Model_1D_Periodic_Finite_Step_Benchmark(Model_1D_Benchmark):
         while (a < (total+1)):
             print('Problem ' + str(a) + ' of ' + str(total))
             solver = Model_1D_Periodic_Solver(grid_model, self.point_num, self.gauss_discrete_direction_num, a)
-            Z,n1,B,L,A, extra = solver.solve(T,m1,m2,n,N,Es1,Es2,Et1,Et2,yo,y_,Q1,Q2,u,wt,a)
-            save_csv(np.asarray(extra), 'extra')
-            save_csv(L, 'L')
-            save_csv(A, 'A')
-            save_csv(B, 'B')
-            save_csv(Z, 'Z')
+            u,wt = solver.gauss_u(), solver.gauss_weight()
+            Z,n1,B,L,A, extra = solver.solve()
+            # save_csv(np.asarray(extra), 'extra')
+            # save_csv(L, 'L')
+            # save_csv(A, 'A')
+            # save_csv(B, 'B')
+            # save_csv(Z, 'Z')
             #% Adjusting points..........................
             X = np.zeros((n*N,1))
             for i in range(1, (N/2) + 1):
@@ -105,8 +131,8 @@ class Model_1D_Periodic_Finite_Step_Benchmark(Model_1D_Benchmark):
                     Y[j - 1] = X[j-t - 1]
                 i = j
 
-            save_csv(X, 'X')
-            save_csv(Y, 'Y')
+            # save_csv(X, 'X')
+            # save_csv(Y, 'Y')
             #% Calculating Reflection, Transmission and Scalar Flux......
             RL = 0
             for t in range(1, N/2 + 1):
@@ -118,11 +144,15 @@ class Model_1D_Periodic_Finite_Step_Benchmark(Model_1D_Benchmark):
                 TR += wt[t - 1] * u[t - 1] * Y[s+n+t - 1]
             m = n + 1
             SCAL = np.zeros((m,1))
+
+            sep = [np.zeros((m,1))] * self.gauss_discrete_direction_num
+
             for t in range(1, N + 1):
                 s = (t-1) * m
                 for i in range(1, m + 1):
                     SCAL[i - 1] = SCAL[i - 1] + wt[t -1] * Y[s+i - 1]
-
+                    sep[t - 1][i - 1] = wt[t -1] * Y[s+i - 1]
+            print Y
             reflec += RL
             reflec2 += (RL)**2
             transm += TR
@@ -138,16 +168,219 @@ class Model_1D_Periodic_Finite_Step_Benchmark(Model_1D_Benchmark):
         kk = T/n
         #% p is line along x-axis.
         p = frange(0, T, kk)
-        p.pop()
 
-        save_csv(SF, 'SF')
-        plt.plot(p,SF,'r')
-        plt.plot(p,SF2,'b')
+        # save_csv(SF, 'SF')
+        print len(p), len(SF), len(SF2)
+        plt.plot(p,np.array(sep[0]),'g')
+        # plt.plot(p,SF,'r')
+        # plt.plot(p,SF2,'b')
         plt.show()
 
 class Model_1D_Homogeneous_Finite_Step_Benchmark(Model_1D_Benchmark):
     def __init__(self, total_len, point_num, boundary_cond, materials, gauss_discrete_direction_num = 2):
-        Model_1D_Benchmark.__init__(self, total_len, gauss_discrete_direction_num, point_num, boundary_cond, materials)
+        Model_1D_Benchmark.__init__(self, float(total_len), point_num, boundary_cond, materials, gauss_discrete_direction_num)
 
     def benchmark(self):
-        return
+        rod_slab = 1
+    	N = self.gauss_discrete_direction_num
+    	T = self.total_len
+    	n = self.point_num
+    	et = self.materials[0].cross_section()
+    	cc = self.materials[0].scattering_ratio()
+    	es = et * cc
+    	yo = self.boundary_cond[0]
+    	y_ = self.boundary_cond[1]
+    	Q = self.materials[0].source()
+
+        M = n*N
+    	h = T/n
+
+    	A = np.zeros((M,M))
+    	B = np.full((1, M), Q/2)
+
+    	# % GAUSS-LEGENDRE QUADRATURE
+
+    	beta = range(1,N)
+    	beta = np.divide(beta, np.sqrt(np.subtract(np.multiply(np.power((range(1,N)), 2), 4), 1) ))
+    	#power 2, times 4, minus 1, sqrt each term, element wise divide
+    	#should it return a vector or a value? When testing with random numbers in Matlab, it looks like value. But steps after imply that its a vector
+    	x, w = np.linalg.eig(np.add(np.diag(beta, -1), np.diag(beta, 1))) #check indexing later
+    	u = x #already in the right form
+    	wt = np.multiply(np.power(w[0,:].T, 2), 2)
+    	#first row (index 0), transpose, square, multiply
+    	#central differences
+    	#finite volume
+    	#finite differences
+    	#things to search
+    	if rod_slab != 1:
+    		u[0] = -1
+    		u[1] = 1
+
+    	# % Diagonal Block of matrix up to N/2
+    	for t in range(1,(N/2) + 1):
+    		s = ((t - 1) * n) - 1 # minus one to account for indexing
+    		ut = u[t-1]
+    		A[s+1, s+1] = (-11 * ut) / (6*h) + et - es * wt[t-1] / 2
+    		A[s+1, s+2] = 3 * ut / h
+    		A[s+1, s+3] = -3 * ut / (2*h)
+    		A[s+1, s+4] = ut/(3*h)
+
+    		for i in range(2, n):
+    			A[s+i, s+i-1] = -ut/(2*h)
+    			A[s+i, s+i] = (et-es*wt[t-1]/2)
+    			A[s+i, s+i+1] = ut/(2*h)
+    		A[s+n, s+n-1] = -ut	/ (2*h)
+    		A[s+n, s+n] = (et-es*wt[t-1]/2)
+    		B[0, s+n] = -ut * y_ / (2*h) + Q/2
+    		# % Remaining Blocks in same direction up to N/2
+    		l = t
+    		if (l == 1) and (N > 2):
+    			for p in range(l+1, (N/2) + 1):
+    				S = ((p-1) * n) - 1
+    				for i in range(1, n+1):
+    					A[s+i, S+i] = -es * wt[p-1] / 2
+    		elif (l > 1) and (N > 2):
+    			for p in range(1,l):
+    				S = ((p-1) * n) - 1
+    				for i in range(1, n+1):
+    					A[s+i, S+i] = -es * wt[p-1] / 2
+    			for p in range(l+1, (N/2) + 1):
+    				S = ((p-1) * n) - 1
+    				for i in range(1, n+1):
+    					A[s+i, S+i] = -es * wt[p-1] / 2
+    		# % Blocks from N/2 to N
+    		a = 0
+    		for p in range(1, (N/2) + 1):
+    			S = ((N/2 + p - 1) * n) - 1
+    			for i in range(2, n+1):
+    				A[s+i, S+i-1] = -es * wt[(N/2+p) - 1] / 2
+    			a = a + (es * wt[(N/2+p) - 1] * yo/2)
+    		B[0,s+1] = a + Q/2
+    	# % Diagonal Block of matrix from N/2+1 to N
+    	for t in range(N/2 + 1, N+1):
+    		s = ((t-1) * n) - 1
+    		A[s+1, s+1] = (et-es*wt[t-1]/2)
+    		A[s+1, s+1+1] = u[t-1] / (2 * h)
+    		B[0,s+1] = u[t-1] * yo / (2 * h) + Q/2
+    		for i in range(2, (n-1) + 1):
+    			A[s+i, s+i-1] = -u[t-1] / (2*h)
+    			A[s+i, s+i] = (et-es*wt[t-1]/2)
+    			A[s+i, s+i+1] = u[t-1]/(2*h)
+
+    		A[s+n, s+n-3] = -u[t-1] / (3*h)
+    		A[s+n, s+n-2] = 3 * u[t-1] / (2*h)
+    		A[s+n, s+n-1] = -3 * u[t-1] / h;
+    		A[s+n, s+n] = (11 * u[t-1] / (6*h) + et - es * wt[t-1] / 2)
+    		# % Remaining Blocks in same direction up to N
+    		l = t
+    		if (l==N/2 + 1) and (N>2):
+    			for p in range(l+1, N+1):
+    				S = ((p-1) * n) - 1
+    				for i in range(1, n+1):
+    					A[s+i, S+i] = -es * wt[p-1] / 2
+    		elif (1 > N/2 + 1) and (N>2):
+    			for p in range(N/2 + 1, (l-1) + 1):
+    				S = ((p-1) * n) - 1
+    				for i in range(1, n+1):
+    					A[s+i, S+i] = -es * wt[p-1] / 2
+    			for p in range(l+1, N+1):
+    				S = ((p-1) * n) - 1
+    				for i in range(1, n+1):
+    					A[s+i, S+i] = -es * wt[p-1] / 2
+    		# % Blocks from 1 to N/2
+    		a = 0
+    		for p in range(1, (N/2) + 1):
+    			S = ((p-1) * n) - 1
+    			for i in range(1, (n-1) + 1):
+    				A[s+i, S+i+1] = -es * wt[p-1] / 2
+    			a = a + (es * wt[p-1] * y_ / 2)
+    		B[0,s+n] = a + Q / 2
+
+    	# save_csv(A, 'A')
+    	# save_csv(B, 'B')
+    	#may be some accuracy solving issues algorithm wise with numpy
+    	# refer to http://stackoverflow.com/questions/25001753/numpys-linalg-solve-and-linalg-lstsq-not-giving-same-answer-as-matlabs
+    	# below are different attempts to see if any difference RESULT: no difference
+    	# AX = B.T
+    	# A1 = np.linalg.inv(A)
+    	# np.savetxt('Ainv.csv', A1, delimiter=',')
+    	# X = np.dot(A1, B.T)
+    	# np.savetxt('B.csv', B.T, delimiter=',')
+    	# np.savetxt('X_manual.csv', X, delimiter=',')
+    	# np.savetxt('X_solve.csv', X1, delimiter=',')
+    	# X2 = np.linalg.lstsq(A, B.T)[0]
+    	# np.savetxt('X_lstsq.csv', X2, delimiter=',')
+    	# print A1 == A
+    	# print np.linalg.cond(A1)
+
+    	X = np.linalg.solve(A, B.T) #checked values compared to the other methods of solving and it seems to be accurate enough
+
+        print len(X)
+        print X
+
+    	Y = np.zeros((M+N,1))
+
+    	# % Adding boundary conditions to the array
+    	i = 1
+    	for t in range(1, (N/2) + 1):
+    		s = (t-1)
+    		for j in range(i, (t*n+s) + 1): #might have conflict here with the s-1
+    			Y[j-1] = X[(j-s)-1]
+    		Y[(j+1) - 1] = y_
+    		i = j + 2
+    	i -= 1
+    	for t in range((N/2) + 1, N+1):
+    		Y[(i+1) -1] = yo
+    		i += 1
+    		for j in range(i+1, (t*n+t) + 1):
+    			Y[j - 1] = X[(j-t) - 1]
+    		i = j
+
+    	RL = 0
+
+    	for t in range(1, (N/2) + 1):
+    		s = (t-1) * n
+    		RL = RL + abs(wt[t-1] * u[t-1] * Y[(s+t) - 1]) # might have conflict here
+    	TR = 0
+    	for t in range((N/2) + 1, N + 1):
+    		s = (t-1) * n
+    		S = (t - N/2 - 1) * n
+    		k = N/2 + 1
+    		TR = TR + wt[t-1] * u[t-1] * Y[(s+n+t) - 1] # might have a conflict here
+    	m = n + 1
+    	SCAL = np.zeros((m, 1))
+    	for t in range(1, N + 1):
+    		s = (t-1) * m
+    		for i in range(1, m + 1):
+    			SCAL[i-1] = SCAL[i-1] + wt[t-1] * Y[(s+i) - 1]
+
+    	# save_csv(Y, 'Y')
+    	# save_csv(SCAL, 'SCAL')
+
+    	x = frange(0, T, h)
+
+    	#forming name for the file save
+    	name = str(rod_slab) + '_' + str(T) + '_' + str(N) + '_' + str(n) + '_' + str(et) + '_' + str(cc) + '_' + str(es) + '_' + str(yo) + '_' + str(y_) + '_' + str(Q)
+
+    	plt.plot(x, SCAL)
+        plt.show()
+
+def frange(start, end=None, inc=None):
+    """A range function, that does accept float increments..."""
+    import math
+
+    if end == None:
+        end = start + 0.0
+        start = 0.0
+    else: start += 0.0 # force it to be a float
+
+    if inc == None:
+        inc = 1.0
+    count = int(math.ceil((end - start) / inc))
+
+    L = [None,] * (count + 1)
+
+    L[0] = start
+    for i in xrange(1,count + 1):
+        L[i] = L[i-1] + inc
+    return L
