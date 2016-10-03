@@ -3,7 +3,7 @@
 %RICHARD VASQUES & NITIN KUMAR YADAV
 
 
-function[Z,extra,n1,B] = SN_per_bench_solver(T,m1,m2,n,N,Es1,Es2,Et1,Et2,yo,y_,Q1,Q2,u,wt,a)
+function[Z,extra,n1,A, B] = SN_per_bench_solver(T,m1,m2,n,N,Es1,Es2,Et1,Et2,yo,y_,Q1,Q2,u,wt,a)
 
 %Periodic Medium........
 interval=T/n;
@@ -140,6 +140,48 @@ for t=1:N/2
     A(s+n1,s+n1)=u(t)*(h(n1)-h(n1-1))/(h(n1)*h(n1-1))+Et12(L(n1,2))-Es12(L(n1,2))*wt(t)/2;
     B(s+n1)=-u(t)*y_*h(n1-1)/(h(n1)*(h(n1-1)+h(n1)))+Q12(L(n1,2))/2;
     
+    
+    % Remaining Blocks in same direction up to N/2..............
+    l=t;
+    if l==1 && N>2
+        for p=l+1:N/2
+            S=(p-1)*n;
+            for i=1:n
+                if L(i,2)==3
+                	Es = Es12(L(i+1,2));
+                else
+                    Es = Es12(L(i,2));
+                end
+                A(s+i,S+i)=-Es*wt(p)/2;
+            end
+        end
+    elseif l>1 && N>2
+        for p=1:l-1
+            S=(p-1)*n;
+            for i=1:n
+                if L(i,2)==3
+                	Es = Es12(L(i+1,2));
+                else
+                    Es = Es12(L(i,2));
+                end
+                A(s+i,S+i)=-Es*wt(p)/2;
+            end
+        end
+        for p=l+1:N/2
+            S=(p-1)*n;
+            for i=1:n
+                if L(i,2)==3
+                	Es = Es12(L(i+1,2));
+                else
+                    Es = Es12(L(i,2));
+                end
+                A(s+i,S+i)=-Es*wt(p)/2;
+            end
+        end
+      
+    end
+    
+    
     % Blocks from N/2 to N........................................
     a=0;
     for p=1:N/2
@@ -184,6 +226,47 @@ for t=N/2+1:N
     A(s+n1,s+n1)=u(t)*(1/h(n1))+Et12(L(n1,2))-Es12(L(n1,2))*wt(t)/2;
     A(s+n1,s+n1-1)=-u(t)*(1/h(n1));
     B(s+n1)=Q12(L(n1,2))/2;
+    
+    % Remaining Blocks in same direction up to N..............
+    l=t;
+    if l==N/2+1 && N>2
+        for p=l+1:N
+            S=(p-1)*n;
+            for i=1:n
+                if L(i+1,2)==3
+                    Es = Es12(L(i,2));
+                else
+                    Es = Es12(L(i+1,2));
+                end
+                A(s+i,S+i)=-Es*wt(p)/2;
+            end
+        end
+    elseif l>N/2+1 && N>2
+        for p=N/2+1:l-1
+            S=(p-1)*n;
+            for i=1:n
+                if L(i+1,2)==3
+                    Es = Es12(L(i,2));
+                else
+                    Es = Es12(L(i+1,2));
+                end
+                A(s+i,S+i)=-Es*wt(p)/2;
+            end
+        end
+        for p=l+1:N
+            S=(p-1)*n;
+            for i=1:n
+                if L(i+1,2)==3
+                    Es = Es12(L(i,2));
+                else
+                    Es = Es12(L(i+1,2));
+                end
+                A(s+i,S+i)=-Es*wt(p)/2;
+            end
+        end
+      
+    end
+    
     
     % Blocks from 1 to N/2........................................
     a=0;

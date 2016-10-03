@@ -43,7 +43,7 @@ class Model_1D_Stochastic_Finite_Step_Benchmark(Model_1D_Benchmark):
     def benchmark(self):
         # TODO: This fixed number should changed to be a indicator
         #       showing when should we stop
-        iter_times = 1
+        iter_times = 100
         solution_list = list(itertools.starmap(self.benchmark_once, [()] * iter_times))
         sum_of_sol = functools.reduce( (lambda x, y: np.array(x) + np.array(y)), solution_list )
         avg_sol = np.array(sum_of_sol) / float(iter_times)
@@ -86,15 +86,14 @@ class Model_1D_Periodic_Finite_Step_Benchmark(Model_1D_Benchmark):
 
         total = (m1+m2) / (T/n)
 
-        while (a < (total+1)):
-            print('Problem ' + str(a) + ' of ' + str(total))
+        while (a < (total+2)):
+            print('Problem ' + str(a) + ' of ' + str(total+1))
             solver = Model_1D_Periodic_Solver(grid_model, self.point_num, self.gauss_discrete_direction_num, a)
             u,wt = solver.gauss_u(), solver.gauss_weight()
             Z,n1,B,L,A, extra = solver.solve()
             # save_csv(np.asarray(extra), 'extra')
             # save_csv(L, 'L')
-            # save_csv(A, 'A')
-            # save_csv(B, 'B')
+            np.savetxt("A_re"+str(a)+".csv", np.asarray(A))\
             # save_csv(Z, 'Z')
             #% Adjusting points..........................
             X = np.zeros((n*N,1))
@@ -145,14 +144,10 @@ class Model_1D_Periodic_Finite_Step_Benchmark(Model_1D_Benchmark):
             m = n + 1
             SCAL = np.zeros((m,1))
 
-            sep = [np.zeros((m,1))] * self.gauss_discrete_direction_num
-
             for t in range(1, N + 1):
                 s = (t-1) * m
                 for i in range(1, m + 1):
                     SCAL[i - 1] = SCAL[i - 1] + wt[t -1] * Y[s+i - 1]
-                    sep[t - 1][i - 1] = wt[t -1] * Y[s+i - 1]
-            print Y
             reflec += RL
             reflec2 += (RL)**2
             transm += TR
@@ -170,8 +165,7 @@ class Model_1D_Periodic_Finite_Step_Benchmark(Model_1D_Benchmark):
         p = frange(0, T, kk)
 
         # save_csv(SF, 'SF')
-        print len(p), len(SF), len(SF2), wt
-        plt.plot(p,np.array(sep[0]),'g')
+        plt.plot(p,np.array(SCAL),'g')
         # plt.plot(p,SF,'r')
         # plt.plot(p,SF2,'b')
         plt.show()
@@ -207,7 +201,9 @@ class Model_1D_Homogeneous_Finite_Step_Benchmark(Model_1D_Benchmark):
         #finite volume
         #finite differences
         #things to search
-        if rod_slab != 1:
+
+        # TODO: seperate rod/slab init cases
+        if rod_slab == 0 and N == 2:
             u[0] = -1
             u[1] = 1
 

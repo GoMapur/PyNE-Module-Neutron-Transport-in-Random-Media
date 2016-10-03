@@ -517,7 +517,37 @@ class Model_1D_Periodic_Solver(Model_1D_Numerical_Solver):
                 A[s+n1-1,s+n1-1-1] = -u[t-1] * h[n1-1] / (h[n1-1-1] * (h[n1-1-1] + h[n1-1]))
                 A[s+n1-1,s+n1-1] = u[t-1] * (h[n1-1] - h[n1-1-1]) / (h[n1-1] * h[n1-1-1]) + Et12[L[n1-1][2-1]] - Es12[L[n1-1][2-1]] * wt[t-1]/2
                 B[s+n1-1,0] = -u[t-1] * y_ * h[n1-1-1] / (h[n1-1] * (h[n1-1-1] + h[n1-1] )) + Q12[L[n1-1][2-1]]/2
-
+                # % Remaining Blocks in same direction up to N/2
+                l = t
+                if (l == 1) and (N > 2):
+                    for p in range(l+1, (N/2) + 1):
+                        S = ((p-1) * n) - 1
+                        for i in range(1, n+1):
+                            if L[i-1][2-1] == 3:
+                                es = Es12[L[i+1-1][2-1]]
+                            else:
+                                es = Es12[L[i-1][2-1]]
+                            A[s+i-1, S+i] = -es * wt[p-1] / 2
+                            # print str(0) + " == " + str(s+i) + " " + str(S+i) + " " + str(-es * wt[p-1] / 2)
+                elif (l > 1) and (N > 2):
+                    for p in range(1,l):
+                        S = ((p-1) * n) - 1
+                        for i in range(1, n+1):
+                            if L[i-1][2-1] == 3:
+                                es = Es12[L[i+1-1][2-1]]
+                            else:
+                                es = Es12[L[i-1][2-1]]
+                            A[s+i-1, S+i] = -es * wt[p-1] / 2
+                            # print str(1) + " == " + str(s+i) + " " + str(S+i) + " " + str(-es * wt[p-1] / 2)
+                    for p in range(l+1, (N/2) + 1):
+                        S = ((p-1) * n) - 1
+                        for i in range(1, n+1):
+                            if L[i-1][2-1] == 3:
+                                es = Es12[L[i+1-1][2-1]]
+                            else:
+                                es = Es12[L[i-1][2-1]]
+                            A[s+i-1, S+i] = -es * wt[p-1] / 2
+                            # print str(2) + " == " + str(s+i) + " " + str(S+i) + " " + str(-es * wt[p-1] / 2)
 
                 #% Blocks from N/2 to N........................................
                 a = 0
@@ -556,7 +586,35 @@ class Model_1D_Periodic_Solver(Model_1D_Numerical_Solver):
                 A[s+n1-1,s+n1-1] = u[t-1] * (1/h[n1-1]) + Et12[L[n1-1][2-1]] - Es12[L[n1-1][2-1]] * wt[t-1]/2
                 A[s+n1-1,s+n1-1-1] = -u[t-1] * (1/h[n1-1])
                 B[s+n1-1,0] = Q12[L[n1-1][2-1]]/2
-
+                # % Remaining Blocks in same direction up to N
+                l = t
+                if (l==N/2 + 1) and (N>2):
+                    for p in range(l+1, N+1):
+                        S = ((p-1) * n) - 1
+                        for i in range(1, n+1):
+                            if L[i+1-1][2-1] == 3:
+                                es = Es12[L[i-1][2-1]]
+                            else:
+                                es = Es12[L[i+1-1][2-1]]
+                            A[s+i-1, S+i] = -es * wt[p-1] / 2
+                elif (l > N/2 + 1) and (N>2):
+                    for p in range(N/2 + 1, (l-1) + 1):
+                        S = ((p-1) * n) - 1
+                        for i in range(1, n+1):
+                            if L[i+1-1][2-1] == 3:
+                                es = Es12[L[i-1][2-1]]
+                            else:
+                                es = Es12[L[i+1-1][2-1]]
+                            # print len(A), len(A[0]), s+i, S+i, n, n1
+                            A[s+i-1, S+i] = -es * wt[p-1] / 2
+                    for p in range(l+1, N+1):
+                        S = ((p-1) * n) - 1
+                        for i in range(1, n+1):
+                            if L[i+1-1][2-1] == 3:
+                                es = Es12[L[i-1][2-1]]
+                            else:
+                                es = Es12[L[i+1-1][2-1]]
+                            A[s+i-1, S+i] = -es * wt[p-1] / 2
 
                 #% Blocks from 1 to N/2........................................
                 a = 0
@@ -568,7 +626,6 @@ class Model_1D_Periodic_Solver(Model_1D_Numerical_Solver):
                         else:
                             A[s+i-1,S+i+1-1] = -Es12[L[i+1-1][2-1]] * wt[p-1]/2
                     a += (Es12[L[n1-1][2-1]] * wt[p-1] * y_/2)
-
                 B[s+n1-1, 0] += a
             Z = np.linalg.solve(A, B)
             return Z, n1, B, L, A, extra

@@ -3,7 +3,7 @@
 %RICHARD VASQUES & NITIN KUMAR YADAV
 
 
-function[Z,extra,n1,randseed] = New_SN_bench_solver_MC(T,m1,m2,n,N,Es1,Es2,Et1,Et2,yo,y_,Q1,Q2,u,wt,randseed,med,a)
+function[Z,extra,n1,ranseed] = New_SN_bench_solver_MC(T,m1,m2,n,N,Es1,Es2,Et1,Et2,yo,y_,Q1,Q2,u,wt,randseed,med,a)
 
 %Building realization----------
 %EXP. Random Medium....

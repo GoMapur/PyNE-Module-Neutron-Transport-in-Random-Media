@@ -101,6 +101,7 @@ for t=1:N/2
         S=(N/2+p-1)*n;
         for i=2:n
             A(s+i,S+i-1)=-Es*wt(N/2+p)/2;
+            fprintf('%d %d %f %d %f\n', s+i,S+i-1, -Es, N/2+p, wt(N/2+p))
         end
         a=a+(Es*wt(N/2+p)*yo/2);
     end
