@@ -37,20 +37,18 @@ class Model_1D_Stochastic_Finite_Step_Benchmark(Model_1D_Benchmark):
         grid_model = Stochastic_Gird(self.total_len, self.boundary_cond, self.materials)
         solver = Model_1D_Stochastic_Finite_Step_Solver(grid_model, self.point_num, gauss_discrete_direction_num = self.gauss_discrete_direction_num)
         solution = solver.solve_scalar_flux()
-        solver.plot_scalar_flux()
+        # solver.plot_scalar_flux()
         return solution
 
     def benchmark(self):
         # TODO: This fixed number should changed to be a indicator
         #       showing when should we stop
-        iter_times = 100
+        iter_times = 1
         solution_list = list(itertools.starmap(self.benchmark_once, [()] * iter_times))
         sum_of_sol = functools.reduce( (lambda x, y: np.array(x) + np.array(y)), solution_list )
         avg_sol = np.array(sum_of_sol) / float(iter_times)
-        print avg_sol
-
-        # plt.plot([self.total_len / self.point_num * i for i in range(int(self.total_len / self.point_num))], avg_sol)
-        # plt.show()
+        plt.plot(frange(0, self.total_len, self.total_len / self.point_num), avg_sol)
+        plt.show()
 
 
 class Model_1D_Periodic_Finite_Step_Benchmark(Model_1D_Benchmark):
@@ -93,7 +91,7 @@ class Model_1D_Periodic_Finite_Step_Benchmark(Model_1D_Benchmark):
             Z,n1,B,L,A, extra = solver.solve()
             # save_csv(np.asarray(extra), 'extra')
             # save_csv(L, 'L')
-            np.savetxt("A_re"+str(a)+".csv", np.asarray(A))\
+            np.savetxt("A_re"+str(a)+".csv", np.asarray(A))
             # save_csv(Z, 'Z')
             #% Adjusting points..........................
             X = np.zeros((n*N,1))
@@ -195,7 +193,7 @@ class Model_1D_Homogeneous_Finite_Step_Benchmark(Model_1D_Benchmark):
         # % GAUSS-LEGENDRE QUADRATURE
         u = np.polynomial.legendre.leggauss(N)[0]
         wt = np.polynomial.legendre.leggauss(N)[1]
-        
+
         #first row (index 0), transpose, square, multiply
         #central differences
         #finite volume

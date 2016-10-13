@@ -100,7 +100,6 @@ end
 %rng('shuffle');
 %rng('default');
 %randseed=rng;
-randseed=1
 
 a=1;
 reflec=0;reflec2=0;
@@ -112,7 +111,7 @@ cond=0;
 %MAIN LOOP
 rr=0;tt=0; b=0;
 while(cond==0)
-    [Z,extra,n1,randseed] = New_SN_bench_solver(T,m1,m2,n,N,Es1,Es2,Et1,Et2,yo,y_,Q1,Q2,u,wt,randseed,med);
+    [Z,extra,n1,A,B] = New_SN_bench_solver_MC(T,m1,m2,n,N,Es1,Es2,Et1,Et2,yo,y_,Q1,Q2,u,wt,med, a);
 
             % Adjusting points..........................
             X=zeros(n*N,1);

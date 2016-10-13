@@ -3,12 +3,11 @@
 %RICHARD VASQUES & NITIN KUMAR YADAV
 
 
-function[Z,extra,n1,ranseed] = New_SN_bench_solver_MC(T,m1,m2,n,N,Es1,Es2,Et1,Et2,yo,y_,Q1,Q2,u,wt,randseed,med,a)
+function[Z,extra,n1,A,B] = New_SN_bench_solver_MC(T,m1,m2,n,N,Es1,Es2,Et1,Et2,yo,y_,Q1,Q2,u,wt,med,a)
 
 %Building realization----------
 %EXP. Random Medium....
 if med==0
-    rng(randseed);
     m12=zeros(2,1);
     m12(1)=m1;m12(2)=m2;
     xx=rand(1);
@@ -30,7 +29,6 @@ if med==0
         x(i,2)=mod(mm,2)+1;
         mm=mm+1;
     end
-    randseed=rng;
 else
     interval=T/n;
     %Periodic Medium........

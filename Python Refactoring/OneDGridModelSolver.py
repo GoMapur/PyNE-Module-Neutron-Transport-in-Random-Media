@@ -23,7 +23,7 @@ class Spatial_Point():
         self.rek = isRequired
 
     def isInterface(self):
-        return len(self.mmaterial) == 2
+        return self.mmaterial[0] != self.mmaterial[1]
 
     def material(self):
         return self.mmaterial
@@ -124,20 +124,22 @@ class Model_1D_Stochastic_Finite_Step_Solver(Model_1D_Numerical_Solver):
         # size is not enought to cover all the intervals
         self.mesh += [Spatial_Point(0.0, [None, grid_model.intervalsAt(0.0)[0].material()])]
         last_required_point = 0.0
+        last_required_point_index = 1
         grid_iter = [interval for interval in grid_model]
         for i in range(len(grid_iter)):
             interval = grid_iter[i]
             if i != len(grid_iter) - 1:
                 next_interval = grid_iter[i + 1]
             while self.mesh[-1].x() < interval.right():
-                next_base_point = min(self.base_step_size + last_required_point, grid_model.len())
-                if next_base_point == grid_model.len():
+                next_base_point = min(self.base_step_size * last_required_point_index, grid_model.len())
+                if next_base_point == grid_model.len() and i == len(grid_iter) - 1:
                     self.mesh += [Spatial_Point(next_base_point, [interval.material(), None])]
                     break
                 if next_base_point < interval.right():
                     # If adding a point does not cause exceeding the interface
                     self.mesh += [Spatial_Point(next_base_point, [interval.material(), interval.material()])]
                     last_required_point = next_base_point
+                    last_required_point_index += 1
                 elif next_base_point > interval.right():
                     if interval.left() == self.mesh[-1].x():
                         self.mesh += [Spatial_Point(interval.mid_point(), [interval.material(), interval.material()], isRequired = False), Spatial_Point(interval.right(), [interval.material(), next_interval.material()], isRequired = False)]
@@ -146,8 +148,9 @@ class Model_1D_Stochastic_Finite_Step_Solver(Model_1D_Numerical_Solver):
                 elif next_base_point == interval.right():
                     self.mesh += [Spatial_Point(interval.right(), [interval.material(), next_interval.material()])]
                     last_required_point = next_base_point
+                    last_required_point_index += 1
                 # print(str(self.mesh[-1].required()) + " " + str(self.mesh[-1].x()) + " / " + str(interval.right()))
-
+        print [(m.x(), m.isInterface()) for m in self.mesh]
         self.mesh_interval_len = [(self.mesh[i+1].x() - self.mesh[i].x()) for i in range(len(self.mesh) - 1)]
         self.n = len(self.mesh)
 
@@ -180,7 +183,7 @@ class Model_1D_Stochastic_Finite_Step_Solver(Model_1D_Numerical_Solver):
             A[dir_submatrix_index + mesh_point_num - 1][dir_submatrix_index + mesh_point_num - 1]= u[dir_index] * (h[-1] - h[-2])/(h[-1]*h[-2]) + self.mesh[-2].material()[1].cross_section() - self.mesh[-2].material()[1].scattering_section() * wt[dir_index] / 2.0
             B[dir_submatrix_index + mesh_point_num - 1] = self.mesh[-2].material()[1].source() / 2.0 - u[dir_index] * h[-2]/h[-1] * 1.0 / (h[-1]+h[-2]) * self.grid.right_boundary_condition()
             # The first and last points are already taken care of
-            for spatial_point_index in range(1, len(self.mesh[:-3])):
+            for spatial_point_index in range(1, len(self.mesh[:-2])):
                 cur_index = dir_submatrix_index + spatial_point_index
                 spatial_point = self.mesh[spatial_point_index]
                 h_ = h[spatial_point_index]
@@ -200,7 +203,7 @@ class Model_1D_Stochastic_Finite_Step_Solver(Model_1D_Numerical_Solver):
                         A[cur_index][cur_index + 2] = -u[dir_index] * dh * 1.0/th
                         B[cur_index] = next_mat.source() / 2.0
                 else:
-                    cur_mat = spatial_point.material()
+                    cur_mat = spatial_point.material()[0]
                     th = h_ + _h
                     dh = h_/_h
                     ddh = h_ - _h
@@ -241,7 +244,7 @@ class Model_1D_Stochastic_Finite_Step_Solver(Model_1D_Numerical_Solver):
             A[dir_submatrix_index + mesh_point_num - 1][dir_submatrix_index + mesh_point_num - 1]= -u[dir_index] / h[-1] + self.mesh[-1].material()[0].cross_section() - self.mesh[-1].material()[0].scattering_section() * wt[dir_index] / 2.0
             B[dir_submatrix_index + mesh_point_num - 1] = self.mesh[-1].material()[0].source() / 2.0
             # The first and last points are already taken care of
-            for spatial_point_index in range(2, len(self.mesh[:-2])):
+            for spatial_point_index in range(1, len(self.mesh[:-2])):
                 cur_index = dir_submatrix_index + spatial_point_index
                 spatial_point = self.mesh[spatial_point_index]
                 h_ = h[spatial_point_index]
@@ -261,7 +264,7 @@ class Model_1D_Stochastic_Finite_Step_Solver(Model_1D_Numerical_Solver):
                         A[cur_index][cur_index + 2] = u[dir_index] * dh * 1.0/th
                         B[cur_index] = prev_mat.source() / 2.0
                 else:
-                    cur_mat = spatial_point.material()
+                    cur_mat = spatial_point.material()[0]
                     th = h_ + _h
                     dh = h_/_h
                     ddh = h_ - _h
@@ -289,8 +292,8 @@ class Model_1D_Stochastic_Finite_Step_Solver(Model_1D_Numerical_Solver):
                 B[dir_submatrix_index] += self.mesh[-1].material()[0].scattering_section() * wt[self.discrete_direction_num / 2 + tmp_dir_index] * self.grid.right_boundary_condition() / 2.0
         # Return the solution of this linear system, note the result is both undetermined and unchecked, need to put more tests for this solve procedure and refactorizing this since
         # it is such a big block lol
-        np.savetxt("A.csv", np.asarray(A), delimiter=",")
-        np.savetxt("B.csv", np.asarray(B), delimiter=",")
+        np.savetxt("A_S.csv", np.asarray(A), delimiter=",")
+        np.savetxt("B_S.csv", np.asarray(B), delimiter=",")
         self.local_cache['complete_solution'] = np.linalg.solve(A, B)
         return self.local_cache['complete_solution']
 
@@ -302,7 +305,11 @@ class Model_1D_Stochastic_Finite_Step_Solver(Model_1D_Numerical_Solver):
         # Then we should throw away all additional points
         # Plus we need to take boundary condition into account
         # Note Im using solution points class to make the complete required solution easily accessible
+
         req_solution = [Solution_Point(self.mesh[p_index], p_index) for p_index in range(len(self.mesh)) if self.mesh[p_index].required()]
+        # req_ind = [p.index for p in req_solution]
+        # print [self.mesh[d].x() for d in req_ind]
+
         req_set = {}
         for p_ind in range(len(req_solution)):
             p = req_solution[p_ind]
@@ -330,6 +337,7 @@ class Model_1D_Stochastic_Finite_Step_Solver(Model_1D_Numerical_Solver):
         for solution_p_index in range(len(req_solution)):
             solution_p = req_solution[solution_p_index]
             scalar_flux[solution_p_index] = sum([wt[dir_index] * solution_p.dir_val[dir_index] for dir_index in range(self.discrete_direction_num)])
+        self.local_cache['scalar_flux'] = scalar_flux
         return scalar_flux
 
     def plot_scalar_flux(self):

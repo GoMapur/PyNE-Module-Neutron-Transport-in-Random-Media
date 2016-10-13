@@ -169,6 +169,7 @@ class Stochastic_Gird(Grid):
             else:
                 self.interfaceToInterval[cur_total_len] = [self.intervals[-2], self.intervals[-1]]
             cur_left = cur_total_len
+        print [i.left() for i in self.intervals] + [cur_total_len]
 
     def intervalsAt(self, place):
         """ Because the number of total points is considerable, use a binary
