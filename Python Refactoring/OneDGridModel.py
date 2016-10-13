@@ -155,9 +155,12 @@ class Stochastic_Gird(Grid):
         # Generate the intervals
         cur_left = 0.0
         cur_total_len = 0.0
+        counter = 0
         while cur_total_len < self.len():
             cur_mat = Utility.cumulative_possibility_dual(thinkness_distribution, self.material_list())
-            cur_total_len += random.expovariate(1 / cur_mat.thickness())
+            # cur_total_len += random.expovariate(1 / cur_mat.thickness())
+            cur_total_len = 0.4 * counter
+            counter += 1
             cur_total_len = min(self.len(), cur_total_len)
             self.interfaces.add(cur_total_len)
             self.intervals += [Interval(cur_mat, cur_left, cur_total_len)]

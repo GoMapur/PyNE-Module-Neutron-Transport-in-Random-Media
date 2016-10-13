@@ -309,8 +309,8 @@ class Model_1D_Homogeneous_Finite_Step_Benchmark(Model_1D_Benchmark):
 
         X = np.linalg.solve(A, B.T) #checked values compared to the other methods of solving and it seems to be accurate enough
 
-        # np.savetxt("A.csv", np.asarray(A))
-        # np.savetxt("B.csv", np.asarray(B.T))
+        np.savetxt("A_h.csv", np.asarray(A))
+        np.savetxt("B_h.csv", np.asarray(B.T))
 
         Y = np.zeros((M+N,1))
 
