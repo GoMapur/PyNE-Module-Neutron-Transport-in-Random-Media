@@ -16,6 +16,8 @@
 import numpy as np
 from itertools import count
 import random
+from decimal import *
+getcontext().prec = 14
 
 class Model_Material():
     _ids = count(0)
@@ -62,8 +64,8 @@ class Interval():
     """
     def __init__(self, material, left_point, right_point):
         self.mmaterial = material
-        self.left_point = float(left_point)
-        self.right_point = float(right_point)
+        self.left_point = Decimal(left_point)
+        self.right_point = Decimal(right_point)
 
     def material_index(self):
         return self.mmaterial.index()
@@ -90,7 +92,7 @@ class Interval():
         return self.left() == place or self.right() == place
 
     def mid_point(self):
-        return (self.left() + self.right()) / 2.0
+        return Decimal(self.left() + self.right()) / Decimal(2.0)
 
 class Grid():
     # TODO: look at comments
@@ -148,26 +150,26 @@ class Stochastic_Gird(Grid):
     """
     def __init__(self, total_len, boundary_cond, materials):
         Grid.__init__(self, total_len = total_len, boundary_cond = boundary_cond, materials = materials)
-        self.interfaces = set([0.0])
+        self.interfaces = set([Decimal(0.0)])
         self.interfaceToInterval = {}
         assert(len(self.materials) > 1, "Stochastic case should have at least two materials.")
         thinkness_distribution = [mat.thickness() for mat in self.material_list()]
         # Generate the intervals
-        cur_left = 0.0
-        cur_total_len = 0.0
-        counter = 0
-        while cur_total_len < self.len():
+        cur_left = Decimal(0.0)
+        cur_total_len = Decimal(0.0)
+        counter = 1
+        while cur_total_len < Decimal(self.len()):
             cur_mat = Utility.cumulative_possibility_dual(thinkness_distribution, self.material_list())
             # cur_total_len += random.expovariate(1 / cur_mat.thickness())
-            cur_total_len = 0.4 * counter
+            cur_total_len = Decimal(Decimal(0.4) * Decimal(counter))
             counter += 1
-            cur_total_len = min(self.len(), cur_total_len)
+            cur_total_len = Decimal(min(Decimal(self.len()), cur_total_len))
             self.interfaces.add(cur_total_len)
             self.intervals += [Interval(cur_mat, cur_left, cur_total_len)]
             # Below is dealing with x -> interval in special case
-            if cur_left == 0.0:
+            if cur_left == Decimal(0.0):
                 self.interfaceToInterval[0.0] = [None, self.intervals[-1]]
-            elif cur_total_len == self.len:
+            elif cur_total_len == Decimal(self.len()):
                 self.interfaceToInterval[cur_total_len] = [self.intervals[-1], None]
             else:
                 self.interfaceToInterval[cur_total_len] = [self.intervals[-2], self.intervals[-1]]
@@ -213,20 +215,6 @@ class Stochastic_Gird(Grid):
         """
         for interval in self.intervals:
             yield interval
-
-class Test_Stochastic_Grid(Stochastic_Gird):
-    # TODO: Note this grid is for testing usage, eg. 10 points.
-    #       You can add points and test use other solvers
-    def __init__(self, total_len, boundary_cond, materials, interval_list):
-        Grid.__init__(self, total_len, boundary_cond, materials)
-        self.intervals = interval_list
-        self.interfaces = set([0.0])
-        self.interfaceToInterval = {0.0: [None, interval_list[0].material()], self.len: [interval_list[-1].material(), None]}
-        lastInterval = None
-        for interval in interval_list:
-            self.interfaces.add(interval.right)
-            self.interfaceToInterval[interval.right] =  [lastInterval.material(), interval.material()]
-            lastInterval = interval
 
 class Periodic_Grid(Grid):
     def __init__(self, total_len, boundary_cond, materials):

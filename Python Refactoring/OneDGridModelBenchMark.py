@@ -12,6 +12,8 @@ from OneDGridModel import *
 from OneDGridModelSolver import *
 import functools
 import itertools
+from decimal import *
+getcontext().prec = 14
 
 class Model_1D_Benchmark():
     def __init__(self, total_len, point_num, boundary_cond, materials, gauss_discrete_direction_num):
