@@ -16,8 +16,8 @@
 import numpy as np
 from itertools import count
 import random
-from decimal import *
-getcontext().prec = 14
+
+std_precision = 1e-14
 
 class Model_Material():
     _ids = count(0)
@@ -58,14 +58,17 @@ class Model_Material():
     def name(self):
         return self.nname
 
+    def __str__(self):
+        return self.name()
+
 class Interval():
     """ This class is for material intervals, note the difference between this
         and the actual grid, which is the point where we go for our calculation.
     """
     def __init__(self, material, left_point, right_point):
         self.mmaterial = material
-        self.left_point = Decimal(left_point)
-        self.right_point = Decimal(right_point)
+        self.left_point = left_point
+        self.right_point = right_point
 
     def material_index(self):
         return self.mmaterial.index()
@@ -92,7 +95,7 @@ class Interval():
         return self.left() == place or self.right() == place
 
     def mid_point(self):
-        return Decimal(self.left() + self.right()) / Decimal(2.0)
+        return (self.left() + self.right()) / 2.0
 
 class Grid():
     # TODO: look at comments
@@ -150,31 +153,36 @@ class Stochastic_Gird(Grid):
     """
     def __init__(self, total_len, boundary_cond, materials):
         Grid.__init__(self, total_len = total_len, boundary_cond = boundary_cond, materials = materials)
-        self.interfaces = set([Decimal(0.0)])
+        self.interfaces = set([0.0])
         self.interfaceToInterval = {}
         assert(len(self.materials) > 1, "Stochastic case should have at least two materials.")
         thinkness_distribution = [mat.thickness() for mat in self.material_list()]
         # Generate the intervals
-        cur_left = Decimal(0.0)
-        cur_total_len = Decimal(0.0)
+        cur_left = 0.0
+        cur_total_len = 0.0
+
         counter = 1
-        while cur_total_len < Decimal(self.len()):
-            cur_mat = Utility.cumulative_possibility_dual(thinkness_distribution, self.material_list())
+        cur_mat = materials[1]
+
+        while cur_total_len < self.len():
+            # cur_mat = Utility.cumulative_possibility_dual(thinkness_distribution, self.material_list())
             # cur_total_len += random.expovariate(1 / cur_mat.thickness())
-            cur_total_len = Decimal(Decimal(0.4) * Decimal(counter))
+
+            cur_mat = materials[1] if cur_mat == materials[0] else materials[0]
+            cur_total_len = 0.4 * counter
             counter += 1
-            cur_total_len = Decimal(min(Decimal(self.len()), cur_total_len))
+
+            cur_total_len = min(self.len(), cur_total_len)
             self.interfaces.add(cur_total_len)
             self.intervals += [Interval(cur_mat, cur_left, cur_total_len)]
             # Below is dealing with x -> interval in special case
-            if cur_left == Decimal(0.0):
+            if cur_left < std_precision:
                 self.interfaceToInterval[0.0] = [None, self.intervals[-1]]
-            elif cur_total_len == Decimal(self.len()):
+            elif abs(cur_total_len - self.len()) < std_precision:
                 self.interfaceToInterval[cur_total_len] = [self.intervals[-1], None]
             else:
                 self.interfaceToInterval[cur_total_len] = [self.intervals[-2], self.intervals[-1]]
             cur_left = cur_total_len
-        print [i.left() for i in self.intervals] + [cur_total_len]
 
     def intervalsAt(self, place):
         """ Because the number of total points is considerable, use a binary

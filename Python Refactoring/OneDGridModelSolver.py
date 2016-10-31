@@ -15,8 +15,8 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-from decimal import *
-getcontext().prec = 14
+
+std_precision = 1e-14
 
 class Spatial_Point():
     def __init__(self, place, material, isRequired = True):
@@ -116,41 +116,50 @@ class Model_1D_Stochastic_Finite_Step_Solver(Model_1D_Numerical_Solver):
         assert (base_point_num != -1 or base_step_size != -1) and not (base_point_num != -1 and base_step_size != -1), "Please either specify base point number or base step size."
         Model_1D_Numerical_Solver.__init__(self, grid = grid_model, gauss_discrete_direction_num = (gauss_discrete_direction_num / 2) * 2)
         if base_point_num != -1:
-            self.base_step_size = Decimal(grid_model.len()) / Decimal(base_point_num)
+            self.base_step_size = grid_model.len() / base_point_num
             self.base_point_num = base_point_num
         else:
-            self.base_step_size = Decimal(base_step_size)
+            self.base_step_size = base_step_size
             self.base_point_num = round(grid_model.len() / base_step_size)
         # Start constructing the mesh, note we will add additional points on
         # interface and inside intercal if the basic points number and step
         # size is not enought to cover all the intervals
-        self.mesh += [Spatial_Point(Decimal(0.0), [None, grid_model.intervalsAt(0.0)[0].material()])]
-        last_required_point = Decimal(0.0)
-        last_required_point_index = Decimal(1)
+        self.mesh += [Spatial_Point(0.0, [None, grid_model.intervalsAt(0.0)[0].material()])]
+        last_required_point = 0.0
+        last_required_point_index = 1
         grid_iter = [interval for interval in grid_model]
         for i in range(len(grid_iter)):
             interval = grid_iter[i]
             if i != len(grid_iter) - 1:
                 next_interval = grid_iter[i + 1]
-            while self.mesh[-1].x() < Decimal(interval.right()):
-                next_base_point = Decimal(min(self.base_step_size * last_required_point_index, Decimal(grid_model.len())))
-                if next_base_point == Decimal(grid_model.len()) and i == len(grid_iter) - 1:
-                    self.mesh += [Spatial_Point(next_base_point, [interval.material(), None])]
+            while self.mesh[-1].x() < interval.right():
+                next_base_point = min(self.base_step_size * last_required_point_index, grid_model.len())
+                if abs(next_base_point - grid_model.len()) < std_precision and i == len(grid_iter) - 1:
+                    if abs(interval.left() - self.mesh[-1].x()) < std_precision:
+                        self.mesh += [Spatial_Point(interval.mid_point(), [interval.material(), interval.material()], isRequired = False), Spatial_Point(interval.right(), [interval.material(), None])]
+                    else:
+                        self.mesh += [Spatial_Point(interval.right(), [interval.material(), None])]
                     break
-                if next_base_point < Decimal(interval.right()):
+                if abs(next_base_point - interval.right()) < std_precision:
+                    if abs(interval.left() - self.mesh[-1].x()) < std_precision:
+                        self.mesh += [Spatial_Point(interval.mid_point(), [interval.material(), interval.material()], isRequired = False), Spatial_Point(interval.right(), [interval.material(), next_interval.material()])]
+                    else:
+                        self.mesh += [Spatial_Point(interval.right(), [interval.material(), next_interval.material()])]
+                    last_required_point = next_base_point
+                    last_required_point_index += 1
+                    break
+                elif next_base_point < interval.right():
                     # If adding a point does not cause exceeding the interface
                     self.mesh += [Spatial_Point(next_base_point, [interval.material(), interval.material()])]
                     last_required_point = next_base_point
                     last_required_point_index += 1
-                elif next_base_point > Decimal(interval.right()):
-                    if Decimal(interval.left()) == self.mesh[-1].x():
-                        self.mesh += [Spatial_Point(Decimal(interval.mid_point()), [interval.material(), interval.material()], isRequired = False), Spatial_Point(Decimal(interval.right()), [interval.material(), next_interval.material()], isRequired = False)]
+                elif next_base_point > interval.right():
+                    if abs(interval.left() - self.mesh[-1].x()) < std_precision:
+                        self.mesh += [Spatial_Point(interval.mid_point(), [interval.material(), interval.material()], isRequired = False), Spatial_Point(interval.right(), [interval.material(), next_interval.material()], isRequired = False)]
                     else:
                         self.mesh += [Spatial_Point(interval.right(), [interval.material(), next_interval.material()], isRequired = False)]
-                elif next_base_point == Decimal(interval.right()):
-                    self.mesh += [Spatial_Point(Decimal(interval.right()), [interval.material(), next_interval.material()])]
-                    last_required_point = next_base_point
-                    last_required_point_index += 1
+                    break
+
                 # print(str(self.mesh[-1].required()) + " " + str(self.mesh[-1].x()) + " / " + str(interval.right()))
         print [(m.x(), m.isInterface()) for m in self.mesh]
         self.mesh_interval_len = [(self.mesh[i+1].x() - self.mesh[i].x()) for i in range(len(self.mesh) - 1)]
@@ -192,7 +201,6 @@ class Model_1D_Stochastic_Finite_Step_Solver(Model_1D_Numerical_Solver):
                 _h = h[spatial_point_index - 1]
                 if spatial_point.isInterface():
                     next_mat = self.mesh[spatial_point_index].material()[1]
-                    print spatial_point_index, spatial_point_index+1, h
                     h__ = h[spatial_point_index + 1]
                     th = h_ + h__
                     hh = 1.0/h_ + 1.0/h__
