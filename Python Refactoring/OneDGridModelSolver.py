@@ -161,7 +161,7 @@ class Model_1D_Stochastic_Finite_Step_Solver(Model_1D_Numerical_Solver):
                     break
 
                 # print(str(self.mesh[-1].required()) + " " + str(self.mesh[-1].x()) + " / " + str(interval.right()))
-        print [(m.x(), m.isInterface()) for m in self.mesh]
+        # print [(m.x(), m.isInterface()) for m in self.mesh]
         self.mesh_interval_len = [(self.mesh[i+1].x() - self.mesh[i].x()) for i in range(len(self.mesh) - 1)]
         self.n = len(self.mesh)
 
@@ -186,16 +186,29 @@ class Model_1D_Stochastic_Finite_Step_Solver(Model_1D_Numerical_Solver):
             dir_submatrix_index = dir_index * mesh_point_num
             # Deal with edge case, in which left part does not exist
             # TODO: Test different points, 2,3,4,5, make this more flexible
-            A[dir_submatrix_index][dir_submatrix_index] = -u[dir_index] / h[0] + self.mesh[0].material()[1].cross_section() - self.mesh[0].material()[1].scattering_section() * wt[dir_index] / 2.0
-            A[dir_submatrix_index][dir_submatrix_index+1] = u[dir_index] / h[0]
+
+            # A[dir_submatrix_index][dir_submatrix_index] = u[dir_index] / h[0] + self.mesh[0].material()[1].cross_section() - self.mesh[0].material()[1].scattering_section() * wt[dir_index] / 2.0
+            # A[dir_submatrix_index][dir_submatrix_index+1] = -u[dir_index] / h[0]
+            # B[dir_submatrix_index] = self.mesh[0].material()[1].source() / 2.0
+
+            A[dir_submatrix_index][dir_submatrix_index] = -u[dir_index] * (1.0/h[0]+1.0/(h[0]+h[1])) + self.mesh[0].material()[1].cross_section() - self.mesh[0].material()[1].scattering_section() * wt[dir_index] / 2.0
+            A[dir_submatrix_index][dir_submatrix_index+1] = u[dir_index] * (1.0/h[0] + 1.0/h[1])
+            A[dir_submatrix_index][dir_submatrix_index+2] = -u[dir_index] * (h[0]/(h[1]*(h[0]+h[1])))
             B[dir_submatrix_index] = self.mesh[0].material()[1].source() / 2.0
 
-            A[dir_submatrix_index + mesh_point_num - 1][dir_submatrix_index + mesh_point_num - 2] = -u[dir_index] * h[-1]/h[-2] * (h[-1] + h[-2])
+            np.savetxt("1A_first_point-.csv", np.asarray(A), delimiter=",")
+            np.savetxt("1B_first_point-.csv", np.asarray(B), delimiter=",")
+
+            A[dir_submatrix_index + mesh_point_num - 1][dir_submatrix_index + mesh_point_num - 2] = -u[dir_index] * h[-1]/(h[-2] * (h[-1] + h[-2]))
             A[dir_submatrix_index + mesh_point_num - 1][dir_submatrix_index + mesh_point_num - 1]= u[dir_index] * (h[-1] - h[-2])/(h[-1]*h[-2]) + self.mesh[-2].material()[1].cross_section() - self.mesh[-2].material()[1].scattering_section() * wt[dir_index] / 2.0
             B[dir_submatrix_index + mesh_point_num - 1] = self.mesh[-2].material()[1].source() / 2.0 - u[dir_index] * h[-2]/h[-1] * 1.0 / (h[-1]+h[-2]) * self.grid.right_boundary_condition()
+
+            np.savetxt("2A_last_point-.csv", np.asarray(A), delimiter=",")
+            np.savetxt("2B_last_point-.csv", np.asarray(B), delimiter=",")
+
             # The first and last points are already taken care of
-            for spatial_point_index in range(2, len(self.mesh[:-1])):
-                cur_index = dir_submatrix_index + spatial_point_index - 1
+            for spatial_point_index in range(1, len(self.mesh[:-2])):
+                cur_index = dir_submatrix_index + spatial_point_index
                 spatial_point = self.mesh[spatial_point_index]
                 h_ = h[spatial_point_index]
                 _h = h[spatial_point_index - 1]
@@ -207,7 +220,7 @@ class Model_1D_Stochastic_Finite_Step_Solver(Model_1D_Numerical_Solver):
                     dh = h_/h__
                     A[cur_index][cur_index] = -u[dir_index] * (1.0/h_ + 1.0/th) + next_mat.cross_section() - next_mat.scattering_section() * wt[dir_index] / 2.0
                     A[cur_index][cur_index + 1] = u[dir_index] * hh
-                    if spatial_point_index == 1:
+                    if spatial_point_index == len(self.mesh[:-2]) - 1:
                         # If the point is the last third point, then it does not have enough points to do the calculation, we need to deal with this using boundary condition
                         B[cur_index] = next_mat.source() / 2.0 + u[dir_index] * dh * 1.0/th * self.grid.left_boundary_condition()
                     else:
@@ -223,6 +236,10 @@ class Model_1D_Stochastic_Finite_Step_Solver(Model_1D_Numerical_Solver):
                     A[cur_index][cur_index] = u[dir_index] * ddh/mh + cur_mat.cross_section() - cur_mat.scattering_section() * wt[dir_index] / 2.0
                     A[cur_index][cur_index + 1] = u[dir_index] * 1.0/dh * 1.0/th
                     B[cur_index] = cur_mat.source() / 2.0
+
+            np.savetxt("3A_main_diagonal-.csv", np.asarray(A), delimiter=",")
+            np.savetxt("3B_main_diagonal-.csv", np.asarray(B), delimiter=",")
+
             # TODO: Var_naming confirm with Richard
             for tmp_pt_index in range(mesh_point_num):
                 for tmp_dir_index in range(self.discrete_direction_num / 2):
@@ -230,8 +247,11 @@ class Model_1D_Stochastic_Finite_Step_Solver(Model_1D_Numerical_Solver):
                         continue
                     negative_dir_in_matrix_index = tmp_dir_index * mesh_point_num
                     matrix_entry_index_row = dir_submatrix_index + tmp_pt_index
-                    matrix_entry_index_col =  negative_dir_in_matrix_index + tmp_pt_index
+                    matrix_entry_index_col = negative_dir_in_matrix_index + tmp_pt_index
                     A[matrix_entry_index_row][matrix_entry_index_col] = -self.mesh[tmp_pt_index].material()[1].scattering_section() * wt[tmp_dir_index] / 2.0
+
+            np.savetxt("4A_other_directions-.csv", np.asarray(A), delimiter=",")
+            np.savetxt("4B_other_directions-.csv", np.asarray(B), delimiter=",")
 
             for tmp_dir_index in range(self.discrete_direction_num / 2):
                 positive_dir_in_matrix_index = (self.discrete_direction_num / 2 + tmp_dir_index) * mesh_point_num
@@ -241,6 +261,9 @@ class Model_1D_Stochastic_Finite_Step_Solver(Model_1D_Numerical_Solver):
                     A[matrix_entry_index_row][matrix_entry_index_col] = -self.mesh[tmp_pt_index].material()[1].scattering_section() * wt[self.discrete_direction_num / 2 + tmp_dir_index] / 2.0
                 B[dir_submatrix_index] += self.mesh[0].material()[1].scattering_section() * wt[self.discrete_direction_num / 2 + tmp_dir_index] * self.grid.right_boundary_condition() / 2.0
 
+            np.savetxt("5A_ltlle_other_matrix-.csv", np.asarray(A), delimiter=",")
+            np.savetxt("5B_ltlle_other_matrix-.csv", np.asarray(B), delimiter=",")
+
         # Second half, which is basically the same, thus plz refactorizing this part
         for dir_index in range(self.discrete_direction_num / 2, self.discrete_direction_num):
             dir_submatrix_index = dir_index * mesh_point_num
@@ -248,15 +271,27 @@ class Model_1D_Stochastic_Finite_Step_Solver(Model_1D_Numerical_Solver):
             # TODO: Test different points, 2,3,4,5, make this more flexible
 
             A[dir_submatrix_index][dir_submatrix_index] = u[dir_index] * (h[1] - h[0])/(h[0] * h[0]) + self.mesh[1].material()[0].cross_section() - self.mesh[1].material()[0].scattering_section() * wt[dir_index] / 2.0
-            A[dir_submatrix_index][dir_submatrix_index+1] = u[dir_index] * h[0]/h[1] * (h[0]+h[1])
+            A[dir_submatrix_index][dir_submatrix_index+1] = u[dir_index] * h[0]/(h[1] * (h[0]+h[1]))
             B[dir_submatrix_index] = self.mesh[1].material()[0].source() / 2.0 + u[dir_index] * h[1]/h[0] * 1.0 / (h[0]+h[1]) * self.grid.left_boundary_condition()
 
-            A[dir_submatrix_index + mesh_point_num - 1][dir_submatrix_index + mesh_point_num - 2] = u[dir_index] / h[-1]
-            A[dir_submatrix_index + mesh_point_num - 1][dir_submatrix_index + mesh_point_num - 1]= -u[dir_index] / h[-1] + self.mesh[-1].material()[0].cross_section() - self.mesh[-1].material()[0].scattering_section() * wt[dir_index] / 2.0
+            np.savetxt("6A_first_point_+.csv", np.asarray(A), delimiter=",")
+            np.savetxt("6B_first_point_+.csv", np.asarray(B), delimiter=",")
+
+            # A[dir_submatrix_index + mesh_point_num - 1][dir_submatrix_index + mesh_point_num - 2] = u[dir_index] / h[-1]
+            # A[dir_submatrix_index + mesh_point_num - 1][dir_submatrix_index + mesh_point_num - 1] = -u[dir_index] / h[-1] + self.mesh[-1].material()[0].cross_section() - self.mesh[-1].material()[0].scattering_section() * wt[dir_index] / 2.0
+            # B[dir_submatrix_index + mesh_point_num - 1] = self.mesh[-1].material()[0].source() / 2.0
+
+            A[dir_submatrix_index + mesh_point_num - 1][dir_submatrix_index + mesh_point_num - 3] = u[dir_index] * h[-1]/h[-2] * 1.0/(h[-1]+h[-2])
+            A[dir_submatrix_index + mesh_point_num - 1][dir_submatrix_index + mesh_point_num - 2] = -u[dir_index] * (1.0/h[-1] + 1.0/h[-2])
+            A[dir_submatrix_index + mesh_point_num - 1][dir_submatrix_index + mesh_point_num - 1] = u[dir_index] * (1.0/h[-1] + 1.0/(h[-2]+h[-1])) + self.mesh[-1].material()[0].cross_section() - self.mesh[-1].material()[0].scattering_section() * wt[dir_index] / 2.0
             B[dir_submatrix_index + mesh_point_num - 1] = self.mesh[-1].material()[0].source() / 2.0
+
+            np.savetxt("7A_last_point+.csv", np.asarray(A), delimiter=",")
+            np.savetxt("7B_last_point+.csv", np.asarray(B), delimiter=",")
+
             # The first and last points are already taken care of
-            for spatial_point_index in range(1, len(self.mesh[:-2])):
-                cur_index = dir_submatrix_index + spatial_point_index
+            for spatial_point_index in range(2, len(self.mesh[:-1])):
+                cur_index = dir_submatrix_index + spatial_point_index - 1
                 spatial_point = self.mesh[spatial_point_index]
                 h_ = h[spatial_point_index]
                 _h = h[spatial_point_index - 1]
@@ -267,12 +302,12 @@ class Model_1D_Stochastic_Finite_Step_Solver(Model_1D_Numerical_Solver):
                     hh = 1/_h + 1/__h
                     dh = _h/__h
                     A[cur_index][cur_index] = u[dir_index] * (1.0/_h + 1.0/th) + prev_mat.cross_section() - prev_mat.scattering_section() * wt[dir_index] / 2.0
-                    A[cur_index][cur_index + 1] = -u[dir_index] * hh
-                    if spatial_point_index == mesh_point_num - 2:
+                    A[cur_index][cur_index - 1] = -u[dir_index] * hh
+                    if spatial_point_index == 2:
                         # If the point is the first third point, then it does not have enough points to do the calculation, we need to deal with this using boundary condition
                         B[cur_index] = prev_mat.source() / 2.0 - u[dir_index] * dh * 1.0/th * self.grid.right_boundary_condition()
                     else:
-                        A[cur_index][cur_index + 2] = u[dir_index] * dh * 1.0/th
+                        A[cur_index][cur_index - 2] = u[dir_index] * dh * 1.0/th
                         B[cur_index] = prev_mat.source() / 2.0
                 else:
                     cur_mat = spatial_point.material()[0]
@@ -284,6 +319,10 @@ class Model_1D_Stochastic_Finite_Step_Solver(Model_1D_Numerical_Solver):
                     A[cur_index][cur_index] = u[dir_index] * ddh/mh + cur_mat.cross_section() - cur_mat.scattering_section() * wt[dir_index] / 2.0
                     A[cur_index][cur_index + 1] = u[dir_index] * 1.0/dh * 1.0/th
                     B[cur_index] = cur_mat.source() / 2.0
+
+            np.savetxt("8A_main_diagonal+.csv", np.asarray(A), delimiter=",")
+            np.savetxt("8B_main_diagonal+.csv", np.asarray(B), delimiter=",")
+
             # TODO: Var_naming confirm with Richard
             for tmp_pt_index in range(mesh_point_num):
                 for tmp_dir_index in range(self.discrete_direction_num / 2, self.discrete_direction_num):
@@ -294,6 +333,9 @@ class Model_1D_Stochastic_Finite_Step_Solver(Model_1D_Numerical_Solver):
                     matrix_entry_index_col =  positive_dir_in_matrix_index + tmp_pt_index
                     A[matrix_entry_index_row][matrix_entry_index_col] = -self.mesh[tmp_pt_index + 1].material()[0].scattering_section() * wt[tmp_dir_index] / 2.0
 
+            np.savetxt("9A_other_directions+.csv", np.asarray(A), delimiter=",")
+            np.savetxt("9B_other_directions+.csv", np.asarray(B), delimiter=",")
+
             for tmp_dir_index in range(self.discrete_direction_num / 2):
                 negative_dir_in_matrix_index = tmp_dir_index * mesh_point_num
                 for tmp_pt_index in range(mesh_point_num - 1):
@@ -301,10 +343,13 @@ class Model_1D_Stochastic_Finite_Step_Solver(Model_1D_Numerical_Solver):
                     matrix_entry_index_col = negative_dir_in_matrix_index + tmp_pt_index + 1
                     A[matrix_entry_index_row][matrix_entry_index_col] = -self.mesh[tmp_pt_index + 1].material()[1].scattering_section() * wt[self.discrete_direction_num / 2 + tmp_dir_index] / 2.0
                 B[dir_submatrix_index] += self.mesh[-1].material()[0].scattering_section() * wt[self.discrete_direction_num / 2 + tmp_dir_index] * self.grid.right_boundary_condition() / 2.0
+
+            np.savetxt("10A_ltlle_other_matrix+.csv", np.asarray(A), delimiter=",")
+            np.savetxt("10B_ltlle_other_matrix+.csv", np.asarray(B), delimiter=",")
         # Return the solution of this linear system, note the result is both undetermined and unchecked, need to put more tests for this solve procedure and refactorizing this since
         # it is such a big block lol
-        np.savetxt("A_S.csv", np.asarray(A), delimiter=",")
-        np.savetxt("B_S.csv", np.asarray(B), delimiter=",")
+        np.savetxt("11A_final.csv", np.asarray(A), delimiter=",")
+        np.savetxt("11B_final.csv", np.asarray(B), delimiter=",")
         self.local_cache['complete_solution'] = np.linalg.solve(A, B)
         return self.local_cache['complete_solution']
 
@@ -318,8 +363,6 @@ class Model_1D_Stochastic_Finite_Step_Solver(Model_1D_Numerical_Solver):
         # Note Im using solution points class to make the complete required solution easily accessible
 
         req_solution = [Solution_Point(self.mesh[p_index], p_index) for p_index in range(len(self.mesh)) if self.mesh[p_index].required()]
-        # req_ind = [p.index for p in req_solution]
-        # print [self.mesh[d].x() for d in req_ind]
 
         req_set = {}
         for p_ind in range(len(req_solution)):
@@ -329,12 +372,276 @@ class Model_1D_Stochastic_Finite_Step_Solver(Model_1D_Numerical_Solver):
             for cur_p in range(self.n - 1):
                 if cur_dir < self.discrete_direction_num / 2:
                     ax_p = cur_p
-                    req_solution[-1].add_dir_val(cur_dir, self.grid.left_boundary_condition())
+                    req_solution[-1].add_dir_val(cur_dir, self.grid.right_boundary_condition())
                 else:
                     ax_p = cur_p + 1
-                    req_solution[0].add_dir_val(cur_dir, self.grid.right_boundary_condition())
+                    req_solution[0].add_dir_val(cur_dir, self.grid.left_boundary_condition())
                 if ax_p in req_set:
-                    req_solution[req_set[ax_p]].add_dir_val(cur_dir, complete_solution[cur_dir * (self.n - 1) + cur_p])
+                    req_solution[req_set[ax_p]].add_dir_val(cur_dir, complete_solution[cur_dir * (self.n-1) + cur_p])
+                    # print req_set[ax_p], cur_dir, cur_dir * (self.n-1) + cur_p
+        self.local_cache['req_solution'] = req_solution
+        return req_solution
+
+    def solve_scalar_flux(self):
+        if 'req_solution' in self.local_cache:
+            req_solution = self.local_cache['req_solution']
+        else:
+            req_solution = self.solve_required_points()
+        scalar_flux = [0.0] * len(req_solution)
+        wt = self.gauss_weight()
+        for solution_p_index in range(len(req_solution)):
+            solution_p = req_solution[solution_p_index]
+            scalar_flux[solution_p_index] = sum([wt[dir_index] * solution_p.dir_val[dir_index] for dir_index in range(self.discrete_direction_num)])
+        self.local_cache['scalar_flux'] = scalar_flux
+        return scalar_flux
+
+    def plot_scalar_flux(self):
+        if 'scalar_flux' in self.local_cache:
+            scalar_flux = self.local_cache['scalar_flux']
+        else:
+            scalar_flux = self.solve_scalar_flux()
+        req_solution = self.local_cache['req_solution']
+        plt.plot([p.spatial_point().x() for p in req_solution], scalar_flux)
+        plt.show()
+
+    def add_point(self, x):
+        for i in range(len(self.mesh)):
+            if self.mesh[i] == x:
+                return
+            if self.mesh[i] < x and x < self.mesh[i+1]:
+                self.mesh.insert(i+1, x)
+                return
+
+class Model_1D_Stochastic_Finite_Volumn_Solver(Model_1D_Numerical_Solver):
+    """ This is the finite step method solver for the stochastic model.
+        Note theortically finite volumn method should perform better than this.
+        1. The mesh generated by this class needs revision: TODO: 10/7/2016
+        2. abstract general method to super class
+    """
+    def __init__(self, grid_model, base_point_num = -1, base_step_size = -1, gauss_discrete_direction_num = 2):
+        assert (base_point_num != -1 or base_step_size != -1) and not (base_point_num != -1 and base_step_size != -1), "Please either specify base point number or base step size."
+        Model_1D_Numerical_Solver.__init__(self, grid = grid_model, gauss_discrete_direction_num = (gauss_discrete_direction_num / 2) * 2)
+        if base_point_num != -1:
+            self.base_step_size = grid_model.len() / base_point_num
+            self.base_point_num = base_point_num
+        else:
+            self.base_step_size = base_step_size
+            self.base_point_num = round(grid_model.len() / base_step_size)
+        # Start constructing the mesh, note we will add additional points on
+        # interface and inside intercal if the basic points number and step
+        # size is not enought to cover all the intervals
+        self.mesh += [Spatial_Point(0.0, [None, grid_model.intervalsAt(0.0)[0].material()])]
+        last_required_point = 0.0
+        last_required_point_index = 1
+        grid_iter = [interval for interval in grid_model]
+        for i in range(len(grid_iter)):
+            interval = grid_iter[i]
+            if i != len(grid_iter) - 1:
+                next_interval = grid_iter[i + 1]
+            while self.mesh[-1].x() < interval.right():
+                next_base_point = min(self.base_step_size * last_required_point_index, grid_model.len())
+                if abs(next_base_point - grid_model.len()) < std_precision and i == len(grid_iter) - 1:
+                    self.mesh += [Spatial_Point(interval.right(), [interval.material(), None])]
+                    break
+                if abs(next_base_point - interval.right()) < std_precision:
+                    self.mesh += [Spatial_Point(interval.right(), [interval.material(), next_interval.material()])]
+                    last_required_point = next_base_point
+                    last_required_point_index += 1
+                    break
+                elif next_base_point < interval.right():
+                    # If adding a point does not cause exceeding the interface
+                    self.mesh += [Spatial_Point(next_base_point, [interval.material(), interval.material()])]
+                    last_required_point = next_base_point
+                    last_required_point_index += 1
+                elif next_base_point > interval.right():
+                    self.mesh += [Spatial_Point(interval.right(), [interval.material(), next_interval.material()], isRequired = False)]
+                    break
+
+                # print(str(self.mesh[-1].required()) + " " + str(self.mesh[-1].x()) + " / " + str(interval.right()))
+        # print [(m.x(), m.isInterface()) for m in self.mesh]
+        self.mesh_interval_len = [(self.mesh[i+1].x() - self.mesh[i].x()) for i in range(len(self.mesh) - 1)]
+        self.n = len(self.mesh)
+
+    def solve(self):
+        """ Build matrix and solve, more docs later
+            Currently using three points to simulate. We shall try more points
+            later
+            # TODO: Add abstraction to simplify the calculation
+            #       Docs and param explainations
+        """
+        mesh_point_num = len(self.mesh) - 1
+        matrix_size = self.discrete_direction_num * mesh_point_num
+        A = [[0.0 for _ in range(matrix_size)] for __ in range(matrix_size)]
+        B = [0.0 for _ in range(matrix_size)]
+        # Begin constructing the matrix, start by iterating through directions
+        u = self.gauss_u()
+        wt = self.gauss_weight()
+        h = self.mesh_interval_len
+
+        # Upper half
+        for dir_index in range(self.discrete_direction_num / 2):
+            dir_submatrix_index = dir_index * mesh_point_num
+            # Deal with edge case, in which left part does not exist
+            # TODO: Test different points, 2,3,4,5, make this more flexible
+
+            # A[dir_submatrix_index][dir_submatrix_index] = u[dir_index] / h[0] + self.mesh[0].material()[1].cross_section() - self.mesh[0].material()[1].scattering_section() * wt[dir_index] / 2.0
+            # A[dir_submatrix_index][dir_submatrix_index+1] = -u[dir_index] / h[0]
+            # B[dir_submatrix_index] = self.mesh[0].material()[1].source() / 2.0
+
+            A[dir_submatrix_index][dir_submatrix_index] = u[dir_index]/h[0] + self.mesh[0].material()[1].cross_section() - self.mesh[0].material()[1].scattering_section() * wt[dir_index] / 2.0
+            A[dir_submatrix_index][dir_submatrix_index+1] = u[dir_index] / h[0]
+            B[dir_submatrix_index] = self.mesh[0].material()[1].source() / 2.0
+
+            np.savetxt("1A_first_point-.csv", np.asarray(A), delimiter=",")
+            np.savetxt("1B_first_point-.csv", np.asarray(B), delimiter=",")
+
+            A[dir_submatrix_index + mesh_point_num - 1][dir_submatrix_index + mesh_point_num - 1]= u[dir_index] / h[-1] + self.mesh[-2].material()[1].cross_section() - self.mesh[-2].material()[1].scattering_section() * wt[dir_index] / 2.0
+            B[dir_submatrix_index + mesh_point_num - 1] = self.mesh[-2].material()[1].source() / 2.0 - u[dir_index] / h[-1] * self.grid.right_boundary_condition()
+
+            np.savetxt("2A_last_point-.csv", np.asarray(A), delimiter=",")
+            np.savetxt("2B_last_point-.csv", np.asarray(B), delimiter=",")
+
+            # The first and last points are already taken care of
+            for spatial_point_index in range(1, len(self.mesh[:-2])):
+                cur_index = dir_submatrix_index + spatial_point_index
+                spatial_point = self.mesh[spatial_point_index]
+                h_ = h[spatial_point_index]
+                _h = h[spatial_point_index - 1]
+                if spatial_point.isInterface():
+                    next_mat = self.mesh[spatial_point_index].material()[1]
+                    h__ = h[spatial_point_index + 1]
+                    th = h_ + h__
+                    hh = 1.0/h_ + 1.0/h__
+                    dh = h_/h__
+                    A[cur_index][cur_index] = u[dir_index] / h_ + next_mat.cross_section() - next_mat.scattering_section() * wt[dir_index] / 2.0
+                    A[cur_index][cur_index + 1] = u[dir_index] / h_
+                    B[cur_index] = next_mat.source() / 2.0
+
+            np.savetxt("3A_main_diagonal-.csv", np.asarray(A), delimiter=",")
+            np.savetxt("3B_main_diagonal-.csv", np.asarray(B), delimiter=",")
+
+            # TODO: Var_naming confirm with Richard
+            for tmp_pt_index in range(mesh_point_num):
+                for tmp_dir_index in range(self.discrete_direction_num / 2):
+                    if tmp_dir_index == dir_index:
+                        continue
+                    negative_dir_in_matrix_index = tmp_dir_index * mesh_point_num
+                    matrix_entry_index_row = dir_submatrix_index + tmp_pt_index
+                    matrix_entry_index_col = negative_dir_in_matrix_index + tmp_pt_index
+                    A[matrix_entry_index_row][matrix_entry_index_col] = -self.mesh[tmp_pt_index].material()[1].scattering_section() * wt[tmp_dir_index] / 2.0
+
+            np.savetxt("4A_other_directions-.csv", np.asarray(A), delimiter=",")
+            np.savetxt("4B_other_directions-.csv", np.asarray(B), delimiter=",")
+
+            for tmp_dir_index in range(self.discrete_direction_num / 2):
+                positive_dir_in_matrix_index = (self.discrete_direction_num / 2 + tmp_dir_index) * mesh_point_num
+                for tmp_pt_index in range(1, mesh_point_num):
+                    matrix_entry_index_row = dir_submatrix_index + tmp_pt_index
+                    matrix_entry_index_col = positive_dir_in_matrix_index + tmp_pt_index - 1
+                    A[matrix_entry_index_row][matrix_entry_index_col] = -self.mesh[tmp_pt_index].material()[1].scattering_section() * wt[self.discrete_direction_num / 2 + tmp_dir_index] / 2.0
+                B[dir_submatrix_index] += self.mesh[0].material()[1].scattering_section() * wt[self.discrete_direction_num / 2 + tmp_dir_index] * self.grid.right_boundary_condition() / 2.0
+
+            np.savetxt("5A_ltlle_other_matrix-.csv", np.asarray(A), delimiter=",")
+            np.savetxt("5B_ltlle_other_matrix-.csv", np.asarray(B), delimiter=",")
+
+        # Second half, which is basically the same, thus plz refactorizing this part
+        for dir_index in range(self.discrete_direction_num / 2, self.discrete_direction_num):
+            dir_submatrix_index = dir_index * mesh_point_num
+            # Deal with edge case, in which left part does not exist
+            # TODO: Test different points, 2,3,4,5, make this more flexible
+
+            A[dir_submatrix_index][dir_submatrix_index] = -u[dir_index] / h[0] + self.mesh[1].material()[0].cross_section() - self.mesh[1].material()[0].scattering_section() * wt[dir_index] / 2.0
+            B[dir_submatrix_index] = self.mesh[1].material()[0].source() / 2.0 + u[dir_index] / h[0] * self.grid.left_boundary_condition()
+
+            np.savetxt("6A_first_point_+.csv", np.asarray(A), delimiter=",")
+            np.savetxt("6B_first_point_+.csv", np.asarray(B), delimiter=",")
+
+            # A[dir_submatrix_index + mesh_point_num - 1][dir_submatrix_index + mesh_point_num - 2] = u[dir_index] / h[-1]
+            # A[dir_submatrix_index + mesh_point_num - 1][dir_submatrix_index + mesh_point_num - 1] = -u[dir_index] / h[-1] + self.mesh[-1].material()[0].cross_section() - self.mesh[-1].material()[0].scattering_section() * wt[dir_index] / 2.0
+            # B[dir_submatrix_index + mesh_point_num - 1] = self.mesh[-1].material()[0].source() / 2.0
+
+            A[dir_submatrix_index + mesh_point_num - 1][dir_submatrix_index + mesh_point_num - 2] = -u[dir_index] / h[-1]
+            A[dir_submatrix_index + mesh_point_num - 1][dir_submatrix_index + mesh_point_num - 1] = -u[dir_index] / h[-1] + self.mesh[-1].material()[0].cross_section() - self.mesh[-1].material()[0].scattering_section() * wt[dir_index] / 2.0
+            B[dir_submatrix_index + mesh_point_num - 1] = self.mesh[-1].material()[0].source() / 2.0
+
+            np.savetxt("7A_last_point+.csv", np.asarray(A), delimiter=",")
+            np.savetxt("7B_last_point+.csv", np.asarray(B), delimiter=",")
+
+            # The first and last points are already taken care of
+            for spatial_point_index in range(2, len(self.mesh[:-1])):
+                cur_index = dir_submatrix_index + spatial_point_index - 1
+                spatial_point = self.mesh[spatial_point_index]
+                h_ = h[spatial_point_index]
+                _h = h[spatial_point_index - 1]
+                if spatial_point.isInterface():
+                    prev_mat = self.mesh[spatial_point_index].material()[0]
+                    __h = h[spatial_point_index - 2]
+                    th = _h + __h
+                    hh = 1/_h + 1/__h
+                    dh = _h/__h
+                    A[cur_index][cur_index] = u[dir_index] * (1.0/_h + 1.0/th) + prev_mat.cross_section() - prev_mat.scattering_section() * wt[dir_index] / 2.0
+                    A[cur_index][cur_index - 1] = -u[dir_index] * hh
+                    B[cur_index] = prev_mat.source() / 2.0
+
+            np.savetxt("8A_main_diagonal+.csv", np.asarray(A), delimiter=",")
+            np.savetxt("8B_main_diagonal+.csv", np.asarray(B), delimiter=",")
+
+            # TODO: Var_naming confirm with Richard
+            for tmp_pt_index in range(mesh_point_num):
+                for tmp_dir_index in range(self.discrete_direction_num / 2, self.discrete_direction_num):
+                    if tmp_dir_index == dir_index:
+                        continue
+                    positive_dir_in_matrix_index = tmp_dir_index * mesh_point_num
+                    matrix_entry_index_row = dir_submatrix_index + tmp_pt_index
+                    matrix_entry_index_col =  positive_dir_in_matrix_index + tmp_pt_index
+                    A[matrix_entry_index_row][matrix_entry_index_col] = -self.mesh[tmp_pt_index + 1].material()[0].scattering_section() * wt[tmp_dir_index] / 2.0
+
+            np.savetxt("9A_other_directions+.csv", np.asarray(A), delimiter=",")
+            np.savetxt("9B_other_directions+.csv", np.asarray(B), delimiter=",")
+
+            for tmp_dir_index in range(self.discrete_direction_num / 2):
+                negative_dir_in_matrix_index = tmp_dir_index * mesh_point_num
+                for tmp_pt_index in range(mesh_point_num - 1):
+                    matrix_entry_index_row = dir_submatrix_index + tmp_pt_index
+                    matrix_entry_index_col = negative_dir_in_matrix_index + tmp_pt_index + 1
+                    A[matrix_entry_index_row][matrix_entry_index_col] = -self.mesh[tmp_pt_index + 1].material()[1].scattering_section() * wt[self.discrete_direction_num / 2 + tmp_dir_index] / 2.0
+                B[dir_submatrix_index] += self.mesh[-1].material()[0].scattering_section() * wt[self.discrete_direction_num / 2 + tmp_dir_index] * self.grid.right_boundary_condition() / 2.0
+
+            np.savetxt("10A_ltlle_other_matrix+.csv", np.asarray(A), delimiter=",")
+            np.savetxt("10B_ltlle_other_matrix+.csv", np.asarray(B), delimiter=",")
+        # Return the solution of this linear system, note the result is both undetermined and unchecked, need to put more tests for this solve procedure and refactorizing this since
+        # it is such a big block lol
+        np.savetxt("11A_final.csv", np.asarray(A), delimiter=",")
+        np.savetxt("11B_final.csv", np.asarray(B), delimiter=",")
+        self.local_cache['complete_solution'] = np.linalg.solve(A, B)
+        return self.local_cache['complete_solution']
+
+    def solve_required_points(self):
+        if 'complete_solution' in self.local_cache:
+            complete_solution = self.local_cache['complete_solution']
+        else:
+            complete_solution = self.solve()
+        # Then we should throw away all additional points
+        # Plus we need to take boundary condition into account
+        # Note Im using solution points class to make the complete required solution easily accessible
+
+        req_solution = [Solution_Point(self.mesh[p_index], p_index) for p_index in range(len(self.mesh)) if self.mesh[p_index].required()]
+
+        req_set = {}
+        for p_ind in range(len(req_solution)):
+            p = req_solution[p_ind]
+            req_set[p.index] = p_ind
+        for cur_dir in range(self.discrete_direction_num):
+            for cur_p in range(self.n - 1):
+                if cur_dir < self.discrete_direction_num / 2:
+                    ax_p = cur_p
+                    req_solution[-1].add_dir_val(cur_dir, self.grid.right_boundary_condition())
+                else:
+                    ax_p = cur_p + 1
+                    req_solution[0].add_dir_val(cur_dir, self.grid.left_boundary_condition())
+                if ax_p in req_set:
+                    req_solution[req_set[ax_p]].add_dir_val(cur_dir, complete_solution[cur_dir * (self.n-1) + cur_p])
+                    # print req_set[ax_p], cur_dir, cur_dir * (self.n-1) + cur_p
         self.local_cache['req_solution'] = req_solution
         return req_solution
 
@@ -656,4 +963,5 @@ class Model_1D_Homogeneous_Solver(Model_1D_Numerical_Solver):
             Model_1D_Numerical_Solver.__init__(self, grid = grid_model, gauss_discrete_direction_num = (discrete_direction_num / 2) * 2, total_point_num = point_num, discretization_stepsize = total_len / point_num)
 
         def solve(self):
+            # Pnding to migrate from benchmark to solver
             return

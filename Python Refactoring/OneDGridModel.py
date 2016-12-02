@@ -169,7 +169,7 @@ class Stochastic_Gird(Grid):
             # cur_total_len += random.expovariate(1 / cur_mat.thickness())
 
             cur_mat = materials[1] if cur_mat == materials[0] else materials[0]
-            cur_total_len = 0.4 * counter
+            cur_total_len = 0.5 * counter
             counter += 1
 
             cur_total_len = min(self.len(), cur_total_len)

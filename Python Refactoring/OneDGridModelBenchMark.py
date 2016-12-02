@@ -52,6 +52,31 @@ class Model_1D_Stochastic_Finite_Step_Benchmark(Model_1D_Benchmark):
         plt.plot(frange(0, self.total_len, self.total_len / self.point_num), avg_sol)
         plt.show()
 
+class Model_1D_Stochastic_Finite_Volumn_Benchmark(Model_1D_Benchmark):
+    def __init__(self, total_len, point_num, boundary_cond, materials, gauss_discrete_direction_num = 2):
+        Model_1D_Benchmark.__init__(self, float(total_len), point_num, boundary_cond, materials, gauss_discrete_direction_num)
+
+    def benchmark_once(self):
+        # NOTE: Gauss-Legendre is taken care of inside the solver instead of the
+        #       benchmark, It has an internal cache to dealwith redundant
+        #       calculation
+        # TODO: Need to add boundary points to the solution to make it symmetric
+        #       and complete.
+        grid_model = Stochastic_Gird(self.total_len, self.boundary_cond, self.materials)
+        solver = Model_1D_Stochastic_Finite_Volumn_Solver(grid_model, self.point_num, gauss_discrete_direction_num = self.gauss_discrete_direction_num)
+        solution = solver.solve_scalar_flux()
+        # solver.plot_scalar_flux()
+        return solution
+
+    def benchmark(self):
+        # TODO: This fixed number should changed to be a indicator
+        #       showing when should we stop
+        iter_times = 1
+        solution_list = list(itertools.starmap(self.benchmark_once, [()] * iter_times))
+        sum_of_sol = functools.reduce( (lambda x, y: np.array(x) + np.array(y)), solution_list )
+        avg_sol = np.array(sum_of_sol) / float(iter_times)
+        plt.plot(frange(0, self.total_len, self.total_len / self.point_num), avg_sol)
+        plt.show()
 
 class Model_1D_Periodic_Finite_Step_Benchmark(Model_1D_Benchmark):
     def __init__(self, total_len, point_num, boundary_cond, materials, gauss_discrete_direction_num = 2):
