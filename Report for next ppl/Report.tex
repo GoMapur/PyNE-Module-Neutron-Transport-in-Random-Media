@@ -1,0 +1,102 @@
+\documentclass[letter,12pt]{article}
+\usepackage{graphicx}
+\usepackage{titlesec}
+\usepackage[normalem]{ulem}
+\graphicspath{ {Images/} }
+\useunder{\uline}{\ul}{}
+ 
+\title{Code report}
+\author{Mingjian Lu}
+\date{02/12/2016}
+\begin{document}
+\maketitle
+\pagebreak
+\tableofcontents
+\pagebreak
+
+\section{About files}
+\begin{table}[h]
+{\renewcommand\arraystretch{1.25}
+\begin{tabular}{|l|l|l|} \hline
+Original Codes:& \multicolumn{2}{p{12cm}|}{This is the original Matlab code, which are the reference codes you should be looking at if you see something really strange or have trouble with the specific calculation steps. They not easy to understand because variable naming is not very intuitive, but will be helpful if you use both python code and Matlab code to understand what we are doing here.} \\ \hline
+Python Translation:& \multicolumn{2}{p{12cm}|}{\raggedright This is the codes before I did refactoring. The codes have not been OOP-ed, so they are direct translation of Matlab code, so the procedures are nearly identical. Periodic and homogeneous cases in refactoring are copied from here and get modified, I fixed several bugs in these two cases.} \\ \hline
+Python Refactoring:& \multicolumn{2}{p{12cm}|}{\raggedright As the name suggested, python refactoring is the OOP-ed version of Matlab code, which will be the major part of your work. More will be said on files in this foler later.} \\ \hline
+\end{tabular}}
+\end{table}
+
+\subsection{Original Codes}
+\begin{table}[h]
+\centering
+\label{my-label}
+{\renewcommand\arraystretch{1.25}
+\begin{tabular}{|l|l|l|}
+\hline
+Vanilla MCode              & \multicolumn{2}{p{11cm}|}{Unmodified Matlab codes, this is original codes}                                                                                                                                                                                          \\ \hline
+Modified MCode             & \multicolumn{2}{p{11cm}|}{\raggedright Clay Shieh, the student was on this project before me, modified matlab code so he can make cross comparison between intermediate products of two functions in Matlab and python, this folder contains his modified code of periodic case} \\ \hline
+csv (folder)               & \multicolumn{2}{p{11cm}|}{\raggedright Folder used to store intermediate outputs}                                                                                                                                                                                                \\ \hline
+compare.py                 & \multicolumn{2}{p{11cm}|}{\raggedright Python script for comparing csv files, here used to compare matrices}                                                                                                                                                                     \\ \hline
+steady-state.py \& .config & \multicolumn{2}{p{11cm}|}{\raggedright A class abstracting inputs for python simulations}                                                                                                                                                                                        \\ \hline
+\end{tabular}}
+\end{table}
+\pagebreak
+\subsubsection{Vanilla MCode}
+\begin{table}[h]
+\centering
+\label{my-label}
+\begin{tabular}{|l|l|l|}
+\hline
+New\_SN\_bench\_solver\_MC.m & \multicolumn{2}{p{10cm}|}{Stochastic case finite step solver, which will create and calculate one randomized grid}     \\ \hline
+New\_SN\_bench.m             & \multicolumn{2}{p{10cm}|}{\raggedright Stochastic case benchmark, which will run its solver a lot of times and average the results} \\ \hline
+SN\_per\_bench\_solver.m     & \multicolumn{2}{p{10cm}|}{\raggedright Periodic case finite step solver, which will calculate one periodic grid}                    \\ \hline
+periodic\_benchmark.m        & \multicolumn{2}{p{10cm}|}{\raggedright Periodic case benchmark, which will run its solver a lot of times and average the results}   \\ \hline
+SN\_hom.m                    & \multicolumn{2}{p{10cm}|}{\raggedright Because homogeneous case is relatively easier, we didn't separate its benchmark and solver}  \\ \hline
+\end{tabular}
+\end{table}
+
+\subsection{Python Translation}
+\begin{table}[h]
+\centering
+\label{my-label}
+\begin{tabular}{|l|l|l|}
+\hline
+compare.py        & \multicolumn{2}{p{11.5cm}|}{Used to compare two csv files}                   \\ \hline
+homogeneous.py    & \multicolumn{2}{p{11.5cm}|}{\raggedright Homogeneous case benchmark}                      \\ \hline
+nonhomogeneous.py & \multicolumn{2}{p{11.5cm}|}{\raggedright Stochastic finite step benchmark and its solver} \\ \hline
+periodic.py       & \multicolumn{2}{p{11.5cm}|}{\raggedright Periodic case benchmark and its solver}          \\ \hline
+steady-state.py   & \multicolumn{2}{p{11.5cm}|}{\raggedright Input wrapper and config files parser}           \\ \hline
+\end{tabular}
+\end{table}
+\subsection{Python Refactoring}
+\begin{table}[h]
+\centering
+\label{my-label}
+\begin{tabular}{|l|l|l|}
+\hline
+Config.py                 & \multicolumn{2}{p{10cm}|}{Input wrapper and parser, I didn't use this functionality}                                                     \\ \hline
+OneDGridModel.py          & \multicolumn{2}{p{10cm}|}{\raggedright Model classes, used to generate different grids for three cases, namely, homogenuous, periodic and stichastic} \\ \hline
+OneDGridModelBenchMark.py & \multicolumn{2}{p{10cm}|}{\raggedright Benchmark classes, which functions as API exposed to users, using model and solver to simulate three cases}    \\ \hline
+OneDGridModelSolver.py    & \multicolumn{2}{p{10cm}|}{\raggedright Solver classes, which solve the result for one certain grid}                                                   \\ \hline
+SolverTest.py             & \multicolumn{2}{p{10cm}|}{\raggedright Test script, also you can see this as the supposed way to use benchmarks}                                      \\ \hline
+\end{tabular}
+\end{table}
+
+\pagebreak
+
+\section{Abstractions of Python Refactoring}
+\includegraphics[width=\textwidth]{General}
+These are primary components involved in three main classes: Benchmark, Solver and Model. 
+
+Model takes care of building grids and materials, using intervals to represent an occurrence of a material, and Grid to represent distribution of materials in a specific grid. 
+
+Solvers are for matrix constructing and solving, since we need to discretize the grid (add more points other than interfaces), we need to use Spatial\_points to keep our discretization. Also since not all our calculated points are needed to re-interpolate the final answer, we need a Solution\_point class to keep track of which points are needed and to integrate information.
+
+Benchmark is the one to utilize model and solver to solve a proposed question.
+
+\section{Known BUG}
+
+Model\_1D\_Stochastic\_Finite\_Step\_Solver interpolate the left second point and second right points in a unstable way, probably has something to do with solve\_required\_points or solve\_scalar\_flux.
+
+\section{Docs for classes}
+I comment this part in code.
+
+\end{document}

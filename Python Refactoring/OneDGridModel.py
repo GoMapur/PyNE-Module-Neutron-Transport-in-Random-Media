@@ -1,14 +1,8 @@
-# TODO: 1. Documents codes
-#       2. Add parameter docs
-#       3. Unit testing
-#       4. Class docs
+# TODO: 1. Unit testing
 
 # Codes for Nuclear Engineering Department @ Berkeley
 # This is a summer project, translation and packaging past codes for 1-D
 # Nutron transport simulations.
-# Note this file is highly extensible so I suggest it could be used in future
-# similar simulation designs, plz improve anything if you'd like, it would be
-# my honor.
 # Mingjian Lu, July 2016
 
 # TODO: Live console
@@ -20,13 +14,14 @@ import random
 std_precision = 1e-14
 
 class Model_Material():
+    # This serves as an inner counter of materials
     _ids = count(0)
 
     def __init__(self, thickness, cross_section, scattering_ratio, homogeneous_isotropic_source, name = None):
         """ Note if you are going to make this program parallel, then there
             might be conflicts with indexing material automatically correctly.
             If that's the case, plz either place a lock on index or use material
-            name to differentiate them.
+            name to identify them.
         """
         material_index_counter = next(self._ids)
         self.tthickness = float(thickness)

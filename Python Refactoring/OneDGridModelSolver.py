@@ -507,15 +507,14 @@ class Model_1D_Stochastic_Finite_Volumn_Solver(Model_1D_Numerical_Solver):
                 spatial_point = self.mesh[spatial_point_index]
                 h_ = h[spatial_point_index]
                 _h = h[spatial_point_index - 1]
-                if spatial_point.isInterface():
-                    next_mat = self.mesh[spatial_point_index].material()[1]
-                    h__ = h[spatial_point_index + 1]
-                    th = h_ + h__
-                    hh = 1.0/h_ + 1.0/h__
-                    dh = h_/h__
-                    A[cur_index][cur_index] = u[dir_index] / h_ + next_mat.cross_section() - next_mat.scattering_section() * wt[dir_index] / 2.0
-                    A[cur_index][cur_index + 1] = u[dir_index] / h_
-                    B[cur_index] = next_mat.source() / 2.0
+                next_mat = self.mesh[spatial_point_index].material()[1]
+                h__ = h[spatial_point_index + 1]
+                th = h_ + h__
+                hh = 1.0/h_ + 1.0/h__
+                dh = h_/h__
+                A[cur_index][cur_index] = u[dir_index] / h_ + next_mat.cross_section() - next_mat.scattering_section() * wt[dir_index] / 2.0
+                A[cur_index][cur_index + 1] = u[dir_index] / h_
+                B[cur_index] = next_mat.source() / 2.0
 
             np.savetxt("3A_main_diagonal-.csv", np.asarray(A), delimiter=",")
             np.savetxt("3B_main_diagonal-.csv", np.asarray(B), delimiter=",")
@@ -573,15 +572,14 @@ class Model_1D_Stochastic_Finite_Volumn_Solver(Model_1D_Numerical_Solver):
                 spatial_point = self.mesh[spatial_point_index]
                 h_ = h[spatial_point_index]
                 _h = h[spatial_point_index - 1]
-                if spatial_point.isInterface():
-                    prev_mat = self.mesh[spatial_point_index].material()[0]
-                    __h = h[spatial_point_index - 2]
-                    th = _h + __h
-                    hh = 1/_h + 1/__h
-                    dh = _h/__h
-                    A[cur_index][cur_index] = u[dir_index] * (1.0/_h + 1.0/th) + prev_mat.cross_section() - prev_mat.scattering_section() * wt[dir_index] / 2.0
-                    A[cur_index][cur_index - 1] = -u[dir_index] * hh
-                    B[cur_index] = prev_mat.source() / 2.0
+                prev_mat = self.mesh[spatial_point_index].material()[0]
+                __h = h[spatial_point_index - 2]
+                th = _h + __h
+                hh = 1/_h + 1/__h
+                dh = _h/__h
+                A[cur_index][cur_index] = u[dir_index] * (1.0/_h + 1.0/th) + prev_mat.cross_section() - prev_mat.scattering_section() * wt[dir_index] / 2.0
+                A[cur_index][cur_index - 1] = -u[dir_index] * hh
+                B[cur_index] = prev_mat.source() / 2.0
 
             np.savetxt("8A_main_diagonal+.csv", np.asarray(A), delimiter=",")
             np.savetxt("8B_main_diagonal+.csv", np.asarray(B), delimiter=",")
