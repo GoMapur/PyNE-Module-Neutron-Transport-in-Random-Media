@@ -57,8 +57,8 @@ class Model_Material():
         return self.name()
 
 class Interval():
-    """ This class is for material intervals, note the difference between this
-        and the actual grid, which is the point where we go for our calculation.
+    """ This class is for material intervals, note a grid is essentially a bunch
+        of intervals with extra information.
     """
     def __init__(self, material, left_point, right_point):
         self.mmaterial = material
@@ -93,18 +93,10 @@ class Interval():
         return (self.left() + self.right()) / 2.0
 
 class Grid():
-    # TODO: look at comments
-    """ Note: this is an abstract class, plz dont initialzie this class.
-        Will include its implemented class here later #TODO
+    """ Note: this is an abstract class, plz dont initialze this class.
     """
     def __init__(self, total_len, boundary_cond, materials):
-        """ Note: if the system is set to automatically decide discretization,
-            then do not use this initialization method. Since total_point_num
-            will be changed when generating the grid, so before the grid's
-            generation, total_point_num should be -1 to signify that it is
-            undecided. Likely, in the same case, step size makes no sense too,
-            so it is needed to calculate from grid to obtain actual used step
-            size.
+        """ boundary_cond is [left boundary condition, right boundary condition]
         """
         self.llen = float(total_len)
         self.bc_L = float(boundary_cond[0])
@@ -114,7 +106,7 @@ class Grid():
 
     def len(self):
         """ Note: This is actual physical measure of the grid length,
-            not some abstract meaning of 'length'
+            not the length of the list of intervals
         """
         return self.llen
 
@@ -134,6 +126,7 @@ class Grid():
         return len(self.materials)
 
     def check_init_state(self):
+        # To see if the class has been neaningfully initialzed
         return len(self.intervals) > 0
 
     def intervalsAt(self, place):
@@ -143,9 +136,6 @@ class Grid():
         raise NotImplementedError
 
 class Stochastic_Gird(Grid):
-    """ This class if for stochastic situation. More docs later
-        Note we should keep method seperate from grid to retain extensibility.
-    """
     def __init__(self, total_len, boundary_cond, materials):
         Grid.__init__(self, total_len = total_len, boundary_cond = boundary_cond, materials = materials)
         self.interfaces = set([0.0])
@@ -160,9 +150,13 @@ class Stochastic_Gird(Grid):
         cur_mat = materials[1]
 
         while cur_total_len < self.len():
+            # The following commented code is for stochastic grid Generation, the reason to
+            # comment them out is for predictable testing and debugging.
             # cur_mat = Utility.cumulative_possibility_dual(thinkness_distribution, self.material_list())
             # cur_total_len += random.expovariate(1 / cur_mat.thickness())
 
+            # I generate periodic grid here in favor of debugging, if you want to
+            # make things work properly, use the codes before.
             cur_mat = materials[1] if cur_mat == materials[0] else materials[0]
             cur_total_len = 0.5 * counter
             counter += 1
@@ -170,7 +164,7 @@ class Stochastic_Gird(Grid):
             cur_total_len = min(self.len(), cur_total_len)
             self.interfaces.add(cur_total_len)
             self.intervals += [Interval(cur_mat, cur_left, cur_total_len)]
-            # Below is dealing with x -> interval in special case
+            # Below is dealing with x -> interval in special cases
             if cur_left < std_precision:
                 self.interfaceToInterval[0.0] = [None, self.intervals[-1]]
             elif abs(cur_total_len - self.len()) < std_precision:
@@ -181,11 +175,12 @@ class Stochastic_Gird(Grid):
 
     def intervalsAt(self, place):
         """ Because the number of total points is considerable, use a binary
-            search to find the right interval. If you wish you can change the
-            data structure to a rbtree but I dont think it will improve the
-            efficiencya lot.
-            Important: This function returns a list in case the point is at an
-            interval!!!
+            search to find the right interval where the query point is at.
+            If you wish you can change the data structure to a rbtree but I
+            dont think it will improve the efficiency lot.
+            Important: This function will always return a list, since if the
+            point is at an interface, the function should give two intervals,
+            as long as the point is not at the beginning or the end.
         """
         if place in self.interfaces:
             ret = self.interfaceToInterval[place]
