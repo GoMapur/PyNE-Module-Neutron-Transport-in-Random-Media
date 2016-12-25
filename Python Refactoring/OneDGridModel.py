@@ -193,6 +193,9 @@ class Stochastic_Gird(Grid):
         return [self.__find_helper(0, len(self.intervals), place)]
 
     def __find_helper(self, start_index, end_index, place):
+        """ I feel like this binary tree search is bugged, but it seems I never
+            use it later...
+        """
         bisect_index = (start_index + end_index) / 2
         bisect_interval  = self.intervals[bisect_index]
         start_interval = self.intervals[start_index]
@@ -216,8 +219,12 @@ class Stochastic_Gird(Grid):
 
 class Periodic_Grid(Grid):
     def __init__(self, total_len, boundary_cond, materials):
-        # Note: materials should be given as the same order as the periodicity
-        # Currently it only suppoets two materials
+        """ I didn't separate grid functionality, plz refer to the solver class.
+            Note currently this class only stores two materials, since original
+            matlab code and so its python translation only support model for two
+            materials
+            TODO: Make direct translation in solver class modularized
+        """
         Grid.__init__(self, total_len = total_len, boundary_cond = boundary_cond, materials = materials)
         assert(len(self.materials) == 2, "Periodic case should have two materials.")
         # Since I am using code of direct translation, the codes below wont have any effect,
@@ -236,12 +243,19 @@ class Periodic_Grid(Grid):
 
 class Homogeneous_Grid(Grid):
     def __init__(self, total_len, boundary_cond, materials):
-        # Note: materials should be given as the same order as the periodicity
-        # Currently it only suppoets two materials
+        """ I didn't separate grid functionality, plz refer to the solver class.
+            Note currently this class only stores two materials, since original
+            matlab code and so its python translation only support model for two
+            materials
+            TODO: Make direct translation in solver class modularized
+        """
         Grid.__init__(self, total_len = total_len, boundary_cond = boundary_cond, materials = materials)
         assert(len(self.materials) == 2, "Periodic case should have two materials.")
 
 class Utility():
+    """ This class has helper functions of model, as names suggested, these
+        three functions are for cumulative probablity generation
+    """
     @staticmethod
     def cumulative_possibility_tri(distribution, distribution_sum, corresponding_choices):
         assert(len(distribution) == len(corresponding_choices), "List lenghth unmatch!")
