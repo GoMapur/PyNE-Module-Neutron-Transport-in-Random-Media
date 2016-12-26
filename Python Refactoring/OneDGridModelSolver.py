@@ -128,6 +128,11 @@ class Model_1D_Stochastic_Finite_Step_Solver(Model_1D_Numerical_Solver):
     def __init__(self, grid_model, base_point_num = -1, base_step_size = -1, gauss_discrete_direction_num = 2):
         assert (base_point_num != -1 or base_step_size != -1) and not (base_point_num != -1 and base_step_size != -1), "Please either specify base point number or base step size."
         Model_1D_Numerical_Solver.__init__(self, grid = grid_model, gauss_discrete_direction_num = (gauss_discrete_direction_num / 2) * 2)
+        # User should only specify base_step_size or base_point_num, since one
+        # will determine another, important, note because point_num * step_size = length_pf_mesh,
+        # even if points are enough to cover all intervals, we still need to add
+        # one endpoint to cover all places, and that endpoint is taken as required by user
+        # so here base_point_num is actually discretization interval number (This actually a bug as you can tell)
         if base_point_num != -1:
             self.base_step_size = grid_model.len() / base_point_num
             self.base_point_num = base_point_num
@@ -135,8 +140,8 @@ class Model_1D_Stochastic_Finite_Step_Solver(Model_1D_Numerical_Solver):
             self.base_step_size = base_step_size
             self.base_point_num = round(grid_model.len() / base_step_size)
         # Start constructing the mesh, note we will add additional points on
-        # interface and inside intercal if the basic points number and step
-        # size is not enought to cover all the intervals
+        # interfaces and inside intercal if the basic points number is
+        # not enough to cover all the intervals
         self.mesh += [Spatial_Point(0.0, [None, grid_model.intervalsAt(0.0)[0].material()])]
         last_required_point = 0.0
         last_required_point_index = 1
@@ -179,27 +184,32 @@ class Model_1D_Stochastic_Finite_Step_Solver(Model_1D_Numerical_Solver):
         self.n = len(self.mesh)
 
     def solve(self):
-        """ Build matrix and solve, more docs later
-            Currently using three points to simulate. We shall try more points
-            later
-            # TODO: Add abstraction to simplify the calculation
-            #       Docs and param explainations
+        """ Build matrix and solve
+            TODO: there are instabilities in first second and last second point,
+                  we have tried three points and two points calculation but does
+                  not seem to help, and we also hace printed out matrix and checked
+                  its numbers, it seems to be right, there might be bug in result
+                  integration part.
         """
+        # Note because the way we defind n, the number of points matrix sees
+        # this problem should be n - 1, since there are always a boundary
+        # condition which will not be considered in matrix
         mesh_point_num = len(self.mesh) - 1
         matrix_size = self.discrete_direction_num * mesh_point_num
+
         A = [[0.0 for _ in range(matrix_size)] for __ in range(matrix_size)]
         B = [0.0 for _ in range(matrix_size)]
-        # Begin constructing the matrix, start by iterating through directions
+
         u = self.gauss_u()
         wt = self.gauss_weight()
         h = self.mesh_interval_len
 
-        # Upper half
+        # Begin constructing the matrix, start by iterating through directions
+        # Upper half of matrix
         for dir_index in range(self.discrete_direction_num / 2):
             dir_submatrix_index = dir_index * mesh_point_num
-            # Deal with edge case, in which left part does not exist
-            # TODO: Test different points, 2,3,4,5, make this more flexible
 
+            # Below is two points case
             # A[dir_submatrix_index][dir_submatrix_index] = u[dir_index] / h[0] + self.mesh[0].material()[1].cross_section() - self.mesh[0].material()[1].scattering_section() * wt[dir_index] / 2.0
             # A[dir_submatrix_index][dir_submatrix_index+1] = -u[dir_index] / h[0]
             # B[dir_submatrix_index] = self.mesh[0].material()[1].source() / 2.0
@@ -277,11 +287,9 @@ class Model_1D_Stochastic_Finite_Step_Solver(Model_1D_Numerical_Solver):
             np.savetxt("5A_ltlle_other_matrix-.csv", np.asarray(A), delimiter=",")
             np.savetxt("5B_ltlle_other_matrix-.csv", np.asarray(B), delimiter=",")
 
-        # Second half, which is basically the same, thus plz refactorizing this part
+        # Second half, which is basically the same
         for dir_index in range(self.discrete_direction_num / 2, self.discrete_direction_num):
             dir_submatrix_index = dir_index * mesh_point_num
-            # Deal with edge case, in which left part does not exist
-            # TODO: Test different points, 2,3,4,5, make this more flexible
 
             A[dir_submatrix_index][dir_submatrix_index] = u[dir_index] * (h[1] - h[0])/(h[0] * h[0]) + self.mesh[1].material()[0].cross_section() - self.mesh[1].material()[0].scattering_section() * wt[dir_index] / 2.0
             A[dir_submatrix_index][dir_submatrix_index+1] = u[dir_index] * h[0]/(h[1] * (h[0]+h[1]))
@@ -336,7 +344,6 @@ class Model_1D_Stochastic_Finite_Step_Solver(Model_1D_Numerical_Solver):
             np.savetxt("8A_main_diagonal+.csv", np.asarray(A), delimiter=",")
             np.savetxt("8B_main_diagonal+.csv", np.asarray(B), delimiter=",")
 
-            # TODO: Var_naming confirm with Richard
             for tmp_pt_index in range(mesh_point_num):
                 for tmp_dir_index in range(self.discrete_direction_num / 2, self.discrete_direction_num):
                     if tmp_dir_index == dir_index:
@@ -395,7 +402,8 @@ class Model_1D_Stochastic_Finite_Step_Solver(Model_1D_Numerical_Solver):
         self.local_cache['req_solution'] = req_solution
         return req_solution
 
-    def solve_scalar_flux(self):
+    def solve_scalar_flux(self
+        # Integrate solution by directions
         if 'req_solution' in self.local_cache:
             req_solution = self.local_cache['req_solution']
         else:
@@ -426,10 +434,8 @@ class Model_1D_Stochastic_Finite_Step_Solver(Model_1D_Numerical_Solver):
                 return
 
 class Model_1D_Stochastic_Finite_Volumn_Solver(Model_1D_Numerical_Solver):
-    """ This is the finite step method solver for the stochastic model.
-        Note theortically finite volumn method should perform better than this.
-        1. The mesh generated by this class needs revision: TODO: 10/7/2016
-        2. abstract general method to super class
+    """ This is totally not working and its reasonable parts are copied from
+        finite step case
     """
     def __init__(self, grid_model, base_point_num = -1, base_step_size = -1, gauss_discrete_direction_num = 2):
         assert (base_point_num != -1 or base_step_size != -1) and not (base_point_num != -1 and base_step_size != -1), "Please either specify base point number or base step size."
@@ -974,5 +980,5 @@ class Model_1D_Homogeneous_Solver(Model_1D_Numerical_Solver):
             Model_1D_Numerical_Solver.__init__(self, grid = grid_model, gauss_discrete_direction_num = (discrete_direction_num / 2) * 2, total_point_num = point_num, discretization_stepsize = total_len / point_num)
 
         def solve(self):
-            # Pnding to migrate from benchmark to solver
+            # Pending to migrate from benchmark to solver
             return
