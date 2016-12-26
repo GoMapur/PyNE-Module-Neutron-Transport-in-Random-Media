@@ -1,9 +1,6 @@
 # Codes for Nuclear Engineering Department @ Berkeley
 # This is a summer project, translation and packaging past codes for 1-D
 # Nutron transport simulations.
-# Note this file is highly extensible so I suggest it could be used in future
-# similar simulation designs, plz improve anything if you'd like, it would be
-# my honor.
 # Mingjian Lu, July 2016
 
 import numpy as np
@@ -16,6 +13,8 @@ from decimal import *
 getcontext().prec = 14
 
 class Model_1D_Benchmark():
+    """ General abstract benchmark class
+    """
     def __init__(self, total_len, point_num, boundary_cond, materials, gauss_discrete_direction_num):
         self.total_len = total_len
         self.gauss_discrete_direction_num = gauss_discrete_direction_num
@@ -34,8 +33,6 @@ class Model_1D_Stochastic_Finite_Step_Benchmark(Model_1D_Benchmark):
         # NOTE: Gauss-Legendre is taken care of inside the solver instead of the
         #       benchmark, It has an internal cache to dealwith redundant
         #       calculation
-        # TODO: Need to add boundary points to the solution to make it symmetric
-        #       and complete.
         grid_model = Stochastic_Gird(self.total_len, self.boundary_cond, self.materials)
         solver = Model_1D_Stochastic_Finite_Step_Solver(grid_model, self.point_num, gauss_discrete_direction_num = self.gauss_discrete_direction_num)
         solution = solver.solve_scalar_flux()
@@ -60,8 +57,6 @@ class Model_1D_Stochastic_Finite_Volumn_Benchmark(Model_1D_Benchmark):
         # NOTE: Gauss-Legendre is taken care of inside the solver instead of the
         #       benchmark, It has an internal cache to dealwith redundant
         #       calculation
-        # TODO: Need to add boundary points to the solution to make it symmetric
-        #       and complete.
         grid_model = Stochastic_Gird(self.total_len, self.boundary_cond, self.materials)
         solver = Model_1D_Stochastic_Finite_Volumn_Solver(grid_model, self.point_num, gauss_discrete_direction_num = self.gauss_discrete_direction_num)
         solution = solver.solve_scalar_flux()
@@ -83,6 +78,10 @@ class Model_1D_Periodic_Finite_Step_Benchmark(Model_1D_Benchmark):
         Model_1D_Benchmark.__init__(self, float(total_len), point_num, boundary_cond, materials, gauss_discrete_direction_num)
 
     def benchmark(self):
+        """ This benchmark has a big outer loop which will try start at
+            every interface of periodic grid, calculate result for each
+            of them then take average
+        """
         grid_model = Periodic_Grid(self.total_len, self.boundary_cond, self.materials)
         N = self.gauss_discrete_direction_num
         T = self.total_len
@@ -200,6 +199,9 @@ class Model_1D_Homogeneous_Finite_Step_Benchmark(Model_1D_Benchmark):
         Model_1D_Benchmark.__init__(self, float(total_len), point_num, boundary_cond, materials, gauss_discrete_direction_num)
 
     def benchmark(self):
+        """ This is copied from direct python translation, while being debugged,
+            should work fine but need refactoring
+        """
         rod_slab = 1
         N = self.gauss_discrete_direction_num
         T = self.total_len
